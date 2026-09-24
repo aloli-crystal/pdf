@@ -98,7 +98,7 @@ module PDF
         transform_val = node["transform"]?
 
         case tag
-        when "defs", "title", "desc", "metadata", "style"
+        when "defs", "title", "desc", "metadata", "style", "marker"
           # Skip non-renderable elements
           return
         end
@@ -211,6 +211,8 @@ module PDF
         page.line_to(x2, y2)
         page.stroke
         page.restore_graphics_state
+
+        draw_markers(node, [PathCommand.new('M', [x1, y1]), PathCommand.new('L', [x2, y2])])
       end
 
       private def draw_polyline(node : XML::Node) : Nil
@@ -225,6 +227,8 @@ module PDF
 
         apply_fill_and_stroke(node)
         page.restore_graphics_state
+
+        draw_markers(node, points_commands(points))
       end
 
       private def draw_polygon(node : XML::Node) : Nil
@@ -241,6 +245,8 @@ module PDF
 
         apply_fill_and_stroke(node)
         page.restore_graphics_state
+
+        draw_markers(node, points_commands(points) << PathCommand.new('Z'))
       end
 
       private def draw_path(node : XML::Node) : Nil
@@ -275,6 +281,146 @@ module PDF
 
         apply_fill_and_stroke(node)
         page.restore_graphics_state
+
+        draw_markers(node, commands)
+      end
+
+      private def points_commands(points : Array(Tuple(Float64, Float64))) : Array(PathCommand)
+        points.map_with_index do |(x, y), i|
+          PathCommand.new(i == 0 ? 'M' : 'L', [x, y])
+        end
+      end
+
+      # Dessine les `marker-start`, `marker-mid` et `marker-end` (ou le
+      # raccourci `marker`, propriétés héritées) aux sommets du tracé,
+      # par-dessus l'élément et dans son repère.
+      private def draw_markers(node : XML::Node, commands : Array(PathCommand)) : Nil
+        return if parser.markers.empty?
+        all = marker_ref(inherited_style(node, "marker"))
+        start = marker_ref(inherited_style(node, "marker-start")) || all
+        mid = marker_ref(inherited_style(node, "marker-mid")) || all
+        finish = marker_ref(inherited_style(node, "marker-end")) || all
+        return unless start || mid || finish
+
+        vertices = MarkerGeometry.vertices(commands)
+        return if vertices.empty?
+        stroke_width = parse_coord(inherited_style(node, "stroke-width")) || 1.0
+
+        draw_marker(start, vertices.first, stroke_width, start: true) if start
+        if mid && vertices.size > 2
+          vertices[1...-1].each { |vertex| draw_marker(mid, vertex, stroke_width) }
+        end
+        draw_marker(finish, vertices.last, stroke_width) if finish
+      end
+
+      # `<marker>` désigné par `url(#id)`, ou nil.
+      private def marker_ref(value : String?) : XML::Node?
+        return nil unless value
+        id = value[/\Aurl\(\s*['"]?#([^'")\s]+)['"]?\s*\)\z/, 1]?
+        id ? parser.markers[id]? : nil
+      end
+
+      # Ids des marqueurs en cours de dessin : un marqueur qui se
+      # référence lui-même n'est pas redessiné.
+      @marker_stack = [] of UInt64
+
+      # Place le repère du marqueur au sommet : rotation selon `orient`,
+      # échelle `markerUnits`, viewport `markerWidth` × `markerHeight`
+      # (défaut 3) où le `viewBox` est ajusté, point `refX`/`refY` au
+      # sommet ; le viewport découpe le dessin sauf `overflow: visible`.
+      private def draw_marker(marker : XML::Node, vertex : MarkerGeometry::Vertex, stroke_width : Float64, start : Bool = false) : Nil
+        key = marker.to_unsafe.address
+        return if @marker_stack.includes?(key)
+
+        width = parse_coord(marker["markerWidth"]?) || 3.0
+        height = parse_coord(marker["markerHeight"]?) || 3.0
+        return if width <= 0 || height <= 0
+
+        sx, sy, tx, ty = marker_viewbox_transform(marker, width, height)
+        ref_x = (parse_coord(marker["refX"]?) || 0.0) * sx + tx
+        ref_y = (parse_coord(marker["refY"]?) || 0.0) * sy + ty
+        scale = marker["markerUnits"]? == "userSpaceOnUse" ? 1.0 : stroke_width
+
+        @marker_stack << key
+        begin
+          page.save_graphics_state
+          page.translate(vertex.x, vertex.y)
+          angle = marker_angle(marker["orient"]?, vertex, start)
+          page.rotate(angle) unless angle.zero?
+          page.scale(scale) unless scale == 1.0
+          page.translate(-ref_x, -ref_y)
+          unless {"visible", "auto"}.includes?(get_style(marker, "overflow"))
+            page.rectangle(0, 0, width, height)
+            page.clip!
+          end
+          page.transform(sx, 0, 0, sy, tx, ty) unless {sx, sy, tx, ty} == {1.0, 1.0, 0.0, 0.0}
+
+          # Le contenu hérite du <marker>, pas de l'élément qui le porte.
+          page.fill_color(0, 0, 0)
+          page.stroke_color(0, 0, 0)
+          page.line_width(1)
+          page.line_join(:miter)
+          page.line_cap(:butt)
+          apply_styles(marker)
+          marker.children.each { |child| render_element(child) }
+          page.restore_graphics_state
+        ensure
+          @marker_stack.pop
+        end
+      end
+
+      # Échelles et translation du `viewBox` vers le viewport
+      # (`preserveAspectRatio`, défaut `xMidYMid meet`) :
+      # point du viewBox (u, v) → (u·sx + tx, v·sy + ty).
+      private def marker_viewbox_transform(marker : XML::Node, width : Float64, height : Float64) : Tuple(Float64, Float64, Float64, Float64)
+        vb = marker["viewBox"]?.try(&.strip.split(/[\s,]+/).compact_map(&.to_f?))
+        return {1.0, 1.0, 0.0, 0.0} unless vb && vb.size == 4 && vb[2] > 0 && vb[3] > 0
+        min_x, min_y, vb_w, vb_h = vb[0], vb[1], vb[2], vb[3]
+        sx = width / vb_w
+        sy = height / vb_h
+        par = (marker["preserveAspectRatio"]? || "xMidYMid meet").split
+        align = par[0]? || "xMidYMid"
+        unless align == "none"
+          s = par[1]? == "slice" ? Math.max(sx, sy) : Math.min(sx, sy)
+          sx = sy = s
+        end
+        tx = -min_x * sx
+        ty = -min_y * sy
+        tx += (width - vb_w * sx) * align_factor(align, 'x')
+        ty += (height - vb_h * sy) * align_factor(align, 'y')
+        {sx, sy, tx, ty}
+      end
+
+      # Part de l'espace libre placée avant le contenu : 0 (`Min`),
+      # 0.5 (`Mid`) ou 1 (`Max`), pour l'axe `axis` de `align`.
+      private def align_factor(align : String, axis : Char) : Float64
+        return 0.0 if align == "none"
+        part = axis == 'x' ? align[1, 3]? : align[5, 3]?
+        case part
+        when "Min" then 0.0
+        when "Max" then 1.0
+        else            0.5
+        end
+      end
+
+      # Angle (degrés) du marqueur : `auto`, `auto-start-reverse` ou un
+      # angle fixe (`45`, `45deg`, `0.5rad`, `50grad`, `0.25turn`).
+      private def marker_angle(orient : String?, vertex : MarkerGeometry::Vertex, start : Bool) : Float64
+        case orient = orient.try(&.strip) || "0"
+        when "auto"
+          vertex.angle
+        when "auto-start-reverse"
+          start ? vertex.angle + 180.0 : vertex.angle
+        else
+          m = orient.match(/\A([-+]?[\d.]+(?:e[-+]?\d+)?)(deg|rad|grad|turn)?\z/i)
+          return 0.0 unless m && (value = m[1].to_f?)
+          case m[2]?.try(&.downcase)
+          when "rad"  then value * 180.0 / Math::PI
+          when "grad" then value * 0.9
+          when "turn" then value * 360.0
+          else             value
+          end
+        end
       end
 
       private def draw_text(node : XML::Node) : Nil

@@ -1,6 +1,7 @@
 require "./svg/color"
 require "./svg/transform"
 require "./svg/path_parser"
+require "./svg/marker_geometry"
 require "./svg/stylesheet"
 require "./svg/parser"
 require "./svg/renderer"

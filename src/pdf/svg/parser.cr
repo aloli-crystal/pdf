@@ -25,12 +25,15 @@ module PDF
       # Règles CSS des éléments `<style>` du document
       getter stylesheet : Stylesheet = Stylesheet.new
 
+      # Éléments `<marker>` du document, par id
+      getter markers = {} of String => XML::Node
+
       def initialize(svg_data : String)
         doc = XML.parse(svg_data)
         @root = find_svg_root(doc)
         @width, @height = parse_dimensions
         @viewbox = parse_viewbox
-        collect_styles(@root)
+        collect(@root)
       end
 
       # Returns all child elements of the SVG root.
@@ -52,14 +55,17 @@ module PDF
       end
 
       # Réunit, dans l'ordre du source, le texte (ou CDATA) des
-      # éléments `<style>`, où qu'ils soient.
-      private def collect_styles(node : XML::Node) : Nil
+      # éléments `<style>`, et indexe les `<marker>`, où qu'ils soient.
+      private def collect(node : XML::Node) : Nil
         node.children.each do |child|
           next unless child.element?
-          if child.name == "style"
+          case child.name
+          when "style"
             @stylesheet.add(child.content)
+          when "marker"
+            child["id"]?.try { |id| @markers[id] ||= child }
           else
-            collect_styles(child)
+            collect(child)
           end
         end
       end

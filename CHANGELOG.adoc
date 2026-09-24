@@ -19,6 +19,7 @@ versioning follows https://semver.org/[SemVer].
 * **SVG rendering: `<text>` stroke** — `stroke` on text is drawn (rendering mode 2); with `paint-order: stroke` the stroke goes under the fill (white halo of dimensioned drawings).
 * **SVG rendering: `stroke-linejoin` and `stroke-linecap`.**
 * **`Page#text_rendering_mode`** — `Tr` operator (fill, stroke, invisible, clip).
+* **SVG rendering: markers (`marker`)** — `marker-start`, `marker-mid`, `marker-end` and the `marker` shorthand (attribute, CSS or inherited) on `line`, `polyline`, `polygon` and `path`. Direction at each vertex (tangent from the control points for curves, bisector at inner vertices), `orient` (`auto`, `auto-start-reverse`, angle), `markerUnits`, `markerWidth`/`markerHeight` (default 3), `viewBox` and `preserveAspectRatio`, `refX`/`refY`, clipping to the viewport unless `overflow: visible`. `<marker>` elements are no longer drawn in place.
 
 === Fixed
 

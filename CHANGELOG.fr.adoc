@@ -19,6 +19,7 @@ le versionnage respecte https://semver.org/lang/fr/[SemVer].
 * **Rendu SVG : contour des `<text>`** — `stroke` sur un texte est dessiné (mode de rendu 2) ; avec `paint-order: stroke`, le contour passe sous le remplissage (halo blanc des plans cotés).
 * **Rendu SVG : `stroke-linejoin` et `stroke-linecap`.**
 * **`Page#text_rendering_mode`** — opérateur `Tr` (remplissage, contour, invisible, découpe).
+* **Rendu SVG : marqueurs (`marker`)** — `marker-start`, `marker-mid`, `marker-end` et le raccourci `marker` (attribut, CSS ou hérités) sur `line`, `polyline`, `polygon` et `path`. Direction en chaque sommet (tangente par les points de contrôle pour les courbes, bissectrice aux sommets intermédiaires), `orient` (`auto`, `auto-start-reverse`, angle), `markerUnits`, `markerWidth`/`markerHeight` (défaut 3), `viewBox` et `preserveAspectRatio`, `refX`/`refY`, découpe au viewport sauf `overflow: visible`. Les `<marker>` ne sont plus dessinés à leur place dans le document.
 
 === Corrigé
 
