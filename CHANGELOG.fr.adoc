@@ -25,6 +25,8 @@ le versionnage respecte https://semver.org/lang/fr/[SemVer].
 * **Rendu SVG : propriétés héritées** — `font-size`, `font-weight` et `text-anchor` posés sur la racine `<svg>` ou un `<g>` s'appliquent aux `<text>` (la taille retombait à 12).
 * **Rendu SVG : espaces** — les suites de blancs d'un `<text>` sont réduites à une espace, comme en SVG.
 * **`Page#svg` ne change plus la police courante** de l'appelant : elle est restaurée après le dessin.
+* **Rendu SVG : `transform` faux hors de l'origine.** Toute transformation (même `translate`) était composée avec des coordonnées déjà placées sur la page : dès que le SVG n'était pas dessiné en (0, 0), l'élément partait ailleurs, souvent hors cadre (disque du drapeau japonais, croissant du Pakistan, flèche du nord d'un plan…). Le renderer pose désormais une seule matrice (position, échelle, retournement de l'axe y) et dessine en unités SVG ; les `transform` s'y appliquent tels quels, les textes sont redressés localement.
+* **Rendu SVG : origine du `viewBox`** (`min-x`, `min-y`) prise en compte.
 
 == v1.20.3 — 2026-08-05
 

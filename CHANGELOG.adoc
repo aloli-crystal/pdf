@@ -25,6 +25,8 @@ versioning follows https://semver.org/[SemVer].
 * **SVG rendering: inherited properties** — `font-size`, `font-weight` and `text-anchor` set on the root `<svg>` or a `<g>` now apply to `<text>` (the size fell back to 12).
 * **SVG rendering: white space** — runs of white space in a `<text>` collapse to one space, as in SVG.
 * **`Page#svg` no longer changes the caller's current font**: it is restored after drawing.
+* **SVG rendering: wrong `transform` away from the origin.** Every transformation (even `translate`) was composed with coordinates already placed on the page: as soon as the SVG was not drawn at (0, 0), the element went elsewhere, often out of frame (Japanese flag disc, Pakistani crescent, north arrow of a drawing…). The renderer now sets a single matrix (position, scale, y-axis flip) and draws in SVG units; `transform` applies as is, and text is locally turned upright.
+* **SVG rendering: `viewBox` origin** (`min-x`, `min-y`) is honoured.
 
 == v1.20.3 — 2026-08-05
 

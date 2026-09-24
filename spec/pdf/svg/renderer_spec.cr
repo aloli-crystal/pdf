@@ -1,4 +1,5 @@
 require "../../spec_helper"
+require "../../support/svg_geometry"
 
 describe PDF::SVG::Parser do
   describe "#initialize" do
@@ -187,7 +188,9 @@ describe PDF::SVG::Renderer do
           <rect transform="translate(20, 30)" x="0" y="0" width="10" height="10" fill="orange"/>
         </svg>)
         page.svg(svg, at: {50, 700})
-        page.content_string.should contain("1 0 0 1 70 670 cm")
+        page.content_string.should contain("1 0 0 1 20 30 cm")
+        rect = SvgGeometry.analyse(page.content_string).rects.first
+        rect.map(&.round(3)).should eq({70.0, 660.0, 80.0, 670.0})
       end
     end
 
@@ -270,11 +273,8 @@ describe PDF::SVG::Renderer do
   end
 
   describe "text" do
-    # Position (x, y) of the first `Td` emitted after the SVG is drawn.
-    td_of = ->(content : String) do
-      m = content.match!(/(-?[\d.]+) (-?[\d.]+) Td/)
-      {m[1].to_f, m[2].to_f}
-    end
+    # Position (x, y) on the page of the first text drawn.
+    td_of = ->(content : String) { SvgGeometry.analyse(content).texts.first.origin }
 
     it "honours text-anchor middle and end" do
       width = PDF::Fonts::Type1.new("Helvetica").string_width("Test", 20.0)

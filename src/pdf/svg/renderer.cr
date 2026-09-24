@@ -5,8 +5,14 @@ module PDF
     # Renders an SVG document onto a PDF page.
     #
     # Traverses the SVG element tree and translates each element into
-    # corresponding PDF drawing operations. Handles coordinate system
-    # transformation (SVG y-axis is top-down, PDF is bottom-up).
+    # corresponding PDF drawing operations.
+    #
+    # Une seule matrice (CTM) posée au début de `draw` place le dessin
+    # sur la page : translation en `at`, échelle vers la taille de
+    # sortie, retournement de l'axe y (SVG descend, PDF monte) et
+    # origine du viewBox. Tout est ensuite dessiné en unités SVG, les
+    # `transform` s'appliquent tels quels par `page.transform`, et les
+    # épaisseurs de trait suivent l'échelle d'elles-mêmes.
     #
     # Ported from Prawn::SVG::Renderer.
     class Renderer
@@ -72,10 +78,11 @@ module PDF
         # Save graphics state
         page.save_graphics_state
 
-        # Set up coordinate transformation:
-        # SVG origin is top-left, y increases downward
-        # PDF origin is bottom-left, y increases upward
-        # We translate to the target position and flip y
+        # Point SVG (u, v) → page (x + (u - min_x)·sx, y - (v - min_y)·sy) :
+        # `at` est le coin haut-gauche du dessin.
+        min_x, min_y = parser.viewbox.try { |vb| {vb[0], vb[1]} } || {0.0, 0.0}
+        page.transform(@x_scale, 0, 0, -@y_scale, @x - min_x * @x_scale, @y + min_y * @y_scale)
+
         parser.elements.each do |element|
           render_element(element)
         end
@@ -88,11 +95,6 @@ module PDF
 
         tag = node.name.downcase
 
-        # Parse style attributes
-        fill_color = get_style(node, "fill")
-        stroke_color_val = get_style(node, "stroke")
-        stroke_width_val = get_style(node, "stroke-width")
-        opacity_val = get_style(node, "opacity")
         transform_val = node["transform"]?
 
         case tag
@@ -105,7 +107,10 @@ module PDF
         # below (not just <g>), otherwise a transform on e.g. a bare
         # <rect> is silently dropped.
         page.save_graphics_state
-        apply_transform(transform_val)
+        if transform_val
+          matrix = Transform.parse(transform_val)
+          page.transform(*matrix) unless matrix == Transform::IDENTITY
+        end
 
         case tag
         when "g"
@@ -145,17 +150,11 @@ module PDF
         h = parse_coord(node["height"]?) || 0.0
         return if w <= 0 || h <= 0
 
-        # Convert SVG coordinates to PDF coordinates
-        px, py = svg_to_pdf(rx, ry_svg)
-
         page.save_graphics_state
         apply_styles(node)
-        # Le coin haut-gauche du rect SVG est en (px, py) (cf.
-        # svg_to_pdf). page.rectangle attend le coin BAS-gauche ; on
-        # descend donc de la hauteur. Sans ça, le rect était dessiné
-        # vers le haut depuis son sommet (décalé de sa hauteur), p.ex.
-        # un logo de page de garde finissait hors page.
-        page.rectangle(px, py - h * @y_scale, w * @x_scale, h * @y_scale)
+        # Axe y retourné : le rectangle s'étend vers le bas depuis
+        # (x, y), son coin haut-gauche, comme en SVG.
+        page.rectangle(rx, ry_svg, w, h)
         apply_fill_and_stroke(node)
         page.restore_graphics_state
       end
@@ -166,14 +165,9 @@ module PDF
         r = parse_coord(node["r"]?) || 0.0
         return if r <= 0
 
-        px, py = svg_to_pdf(cx, cy)
-        sr = r * @x_scale
-
         page.save_graphics_state
         apply_styles(node)
-        # Approximate circle with 4 cubic Bezier curves
-        kappa = 0.5522847498 # 4 * (sqrt(2) - 1) / 3
-        draw_ellipse_path(px, py, sr, sr * @y_scale / @x_scale)
+        draw_ellipse_path(cx, cy, r, r)
         apply_fill_and_stroke(node)
         page.restore_graphics_state
       end
@@ -185,17 +179,16 @@ module PDF
         ry = parse_coord(node["ry"]?) || 0.0
         return if rx <= 0 || ry <= 0
 
-        px, py = svg_to_pdf(cx, cy)
-
         page.save_graphics_state
         apply_styles(node)
-        draw_ellipse_path(px, py, rx * @x_scale, ry * @y_scale)
+        draw_ellipse_path(cx, cy, rx, ry)
         apply_fill_and_stroke(node)
         page.restore_graphics_state
       end
 
+      # Ellipse approchée par 4 courbes de Bézier cubiques.
       private def draw_ellipse_path(cx : Float64, cy : Float64, rx : Float64, ry : Float64) : Nil
-        kappa = 0.5522847498
+        kappa = 0.5522847498 # 4 * (sqrt(2) - 1) / 3
         ox = rx * kappa
         oy = ry * kappa
 
@@ -212,13 +205,10 @@ module PDF
         x2 = parse_coord(node["x2"]?) || 0.0
         y2 = parse_coord(node["y2"]?) || 0.0
 
-        px1, py1 = svg_to_pdf(x1, y1)
-        px2, py2 = svg_to_pdf(x2, y2)
-
         page.save_graphics_state
         apply_styles(node)
-        page.move_to(px1, py1)
-        page.line_to(px2, py2)
+        page.move_to(x1, y1)
+        page.line_to(x2, y2)
         page.stroke
         page.restore_graphics_state
       end
@@ -230,14 +220,8 @@ module PDF
         page.save_graphics_state
         apply_styles(node)
 
-        first = points[0]
-        px, py = svg_to_pdf(first[0], first[1])
-        page.move_to(px, py)
-
-        points[1..].each do |pt|
-          px, py = svg_to_pdf(pt[0], pt[1])
-          page.line_to(px, py)
-        end
+        page.move_to(*points[0])
+        points[1..].each { |pt| page.line_to(*pt) }
 
         apply_fill_and_stroke(node)
         page.restore_graphics_state
@@ -250,18 +234,10 @@ module PDF
         page.save_graphics_state
         apply_styles(node)
 
-        first = points[0]
-        px, py = svg_to_pdf(first[0], first[1])
-        page.move_to(px, py)
-
-        points[1..].each do |pt|
-          px, py = svg_to_pdf(pt[0], pt[1])
-          page.line_to(px, py)
-        end
-
+        page.move_to(*points[0])
+        points[1..].each { |pt| page.line_to(*pt) }
         # Close the path
-        px, py = svg_to_pdf(first[0], first[1])
-        page.line_to(px, py)
+        page.line_to(*points[0])
 
         apply_fill_and_stroke(node)
         page.restore_graphics_state
@@ -280,16 +256,12 @@ module PDF
         commands.each do |cmd|
           case cmd.type
           when 'M'
-            px, py = svg_to_pdf(cmd.args[0], cmd.args[1])
-            page.move_to(px, py)
+            page.move_to(cmd.args[0], cmd.args[1])
           when 'L'
-            px, py = svg_to_pdf(cmd.args[0], cmd.args[1])
-            page.line_to(px, py)
+            page.line_to(cmd.args[0], cmd.args[1])
           when 'C'
-            px1, py1 = svg_to_pdf(cmd.args[0], cmd.args[1])
-            px2, py2 = svg_to_pdf(cmd.args[2], cmd.args[3])
-            px3, py3 = svg_to_pdf(cmd.args[4], cmd.args[5])
-            page.curve_to(px1, py1, px2, py2, px3, py3)
+            a = cmd.args
+            page.curve_to(a[0], a[1], a[2], a[3], a[4], a[5])
           when 'Z'
             # Close the subpath only. The fill/stroke decision is made
             # below in `apply_fill_and_stroke`; calling `close_stroke`
@@ -312,22 +284,23 @@ module PDF
         content = node.content.strip.gsub(/\s+/, " ")
         return if content.empty?
 
-        px, py = svg_to_pdf(tx, ty)
-
         # font-size, font-weight and text-anchor are inherited
         # properties : they are often set once on the root <svg> or a <g>.
         font_size = parse_coord(inherited_style(node, "font-size")) || 12.0
-        font_size *= @y_scale
         bold = bold_weight?(inherited_style(node, "font-weight"))
 
         page.save_graphics_state
         apply_styles(node)
         width = select_text_font(bold, font_size, content)
-        case inherited_style(node, "text-anchor")
-        when "middle" then px -= width / 2
-        when "end"    then px -= width
-        end
-        paint_text(node, content, px, py)
+        shift = case inherited_style(node, "text-anchor")
+                when "middle" then width / 2
+                when "end"    then width
+                else               0.0
+                end
+        # Contre-retournement local : dans le repère SVG (y vers le
+        # bas), le texte serait dessiné à l'envers.
+        page.transform(1, 0, 0, -1, tx, ty)
+        paint_text(node, content, -shift, 0.0)
         page.restore_graphics_state
       end
 
@@ -388,15 +361,6 @@ module PDF
         (value.to_i? || 400) >= 600
       end
 
-      # Converts SVG coordinates to PDF coordinates.
-      # SVG: origin top-left, y increases downward
-      # PDF: origin bottom-left, y increases upward
-      private def svg_to_pdf(svg_x : Float64, svg_y : Float64) : Tuple(Float64, Float64)
-        pdf_x = @x + svg_x * @x_scale
-        pdf_y = @y - svg_y * @y_scale
-        {pdf_x, pdf_y}
-      end
-
       private def apply_styles(node : XML::Node) : Nil
         # Fill color
         fill = get_style(node, "fill")
@@ -418,7 +382,7 @@ module PDF
         sw = get_style(node, "stroke-width")
         if sw
           if w = parse_coord(sw)
-            page.line_width(w * @x_scale)
+            page.line_width(w)
           end
         end
 
@@ -478,17 +442,6 @@ module PDF
         else
           page.end_path
         end
-      end
-
-      private def apply_transform(transform_str : String?) : Nil
-        return unless transform_str
-        matrix = Transform.parse(transform_str)
-        return if matrix == Transform::IDENTITY
-        # Apply transformation matrix to PDF
-        # PDF transformation matrix: [a b c d e f]
-        a, b, c, d, e, f = matrix
-        # Adjust for SVG-to-PDF coordinate flip
-        page.transform(a, -b, -c, d, e * @x_scale + @x, -f * @y_scale + @y)
       end
 
       # Valeur d'une propriété pour `node`, selon la cascade SVG :
