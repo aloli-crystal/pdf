@@ -7,14 +7,10 @@ Toutes les évolutions notables de pdf sont consignées ici. Le
 format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog] et
 le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
-== v1.21.0 — 2026-09-24
+== Non publié
 
 === Ajouté
 
-* **Rendu SVG : `text-anchor`** (`start`, `middle`, `end`) sur les `<text>`, mesuré avec la police utilisée.
-* **Rendu SVG : opacité** — `opacity`, `fill-opacity` et `stroke-opacity` (nombre ou pourcentage) deviennent un ExtGState ; `opacity` multiplie les deux autres.
-* **Rendu SVG : `font-weight`** — `bold`, `bolder` ou ≥ 600 utilisent la police grasse.
-* **`Page#svg(…, font:, bold_font:)`** — polices TrueType optionnelles pour les `<text>` ; sans elles, Helvetica WinAnsi remplace ≈, →, ■… par `?`.
 * **Rendu SVG : feuilles de style `<style>`** — sélecteurs de type, classe (attribut `class` à plusieurs valeurs), id, `*`, composés (`text.cote`) et listes ; les autres sont ignorés. Cascade SVG : attribut de présentation < règles CSS (spécificité, puis ordre du source) < attribut `style` ; `!important` respecté.
 * **Rendu SVG : contour des `<text>`** — `stroke` sur un texte est dessiné (mode de rendu 2) ; avec `paint-order: stroke`, le contour passe sous le remplissage (halo blanc des plans cotés).
 * **Rendu SVG : `stroke-linejoin` et `stroke-linecap`.**
@@ -23,11 +19,23 @@ le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
 === Corrigé
 
+* **Rendu SVG : `transform` faux hors de l'origine.** Toute transformation (même `translate`) était composée avec des coordonnées déjà placées sur la page : dès que le SVG n'était pas dessiné en (0, 0), l'élément partait ailleurs, souvent hors cadre (disque du drapeau japonais, croissant du Pakistan, flèche du nord d'un plan…). Le renderer pose désormais une seule matrice (position, échelle, retournement de l'axe y) et dessine en unités SVG ; les `transform` s'y appliquent tels quels, les textes sont redressés localement.
+* **Rendu SVG : origine du `viewBox`** (`min-x`, `min-y`) prise en compte.
+
+== v1.21.0 — 2026-09-24
+
+=== Ajouté
+
+* **Rendu SVG : `text-anchor`** (`start`, `middle`, `end`) sur les `<text>`, mesuré avec la police utilisée.
+* **Rendu SVG : opacité** — `opacity`, `fill-opacity` et `stroke-opacity` (nombre ou pourcentage) deviennent un ExtGState ; `opacity` multiplie les deux autres.
+* **Rendu SVG : `font-weight`** — `bold`, `bolder` ou ≥ 600 utilisent la police grasse.
+* **`Page#svg(…, font:, bold_font:)`** — polices TrueType optionnelles pour les `<text>` ; sans elles, Helvetica WinAnsi remplace ≈, →, ■… par `?`.
+
+=== Corrigé
+
 * **Rendu SVG : propriétés héritées** — `font-size`, `font-weight` et `text-anchor` posés sur la racine `<svg>` ou un `<g>` s'appliquent aux `<text>` (la taille retombait à 12).
 * **Rendu SVG : espaces** — les suites de blancs d'un `<text>` sont réduites à une espace, comme en SVG.
 * **`Page#svg` ne change plus la police courante** de l'appelant : elle est restaurée après le dessin.
-* **Rendu SVG : `transform` faux hors de l'origine.** Toute transformation (même `translate`) était composée avec des coordonnées déjà placées sur la page : dès que le SVG n'était pas dessiné en (0, 0), l'élément partait ailleurs, souvent hors cadre (disque du drapeau japonais, croissant du Pakistan, flèche du nord d'un plan…). Le renderer pose désormais une seule matrice (position, échelle, retournement de l'axe y) et dessine en unités SVG ; les `transform` s'y appliquent tels quels, les textes sont redressés localement.
-* **Rendu SVG : origine du `viewBox`** (`min-x`, `min-y`) prise en compte.
 
 == v1.20.3 — 2026-08-05
 

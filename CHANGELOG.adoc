@@ -7,14 +7,10 @@ All notable changes to pdf are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
-== v1.21.0 — 2026-09-24
+== Unreleased
 
 === Added
 
-* **SVG rendering: `text-anchor`** (`start`, `middle`, `end`) on `<text>`, measured with the font in use.
-* **SVG rendering: opacity** — `opacity`, `fill-opacity` and `stroke-opacity` (number or percentage) become an ExtGState; `opacity` multiplies the other two.
-* **SVG rendering: `font-weight`** — `bold`, `bolder` or ≥ 600 use the bold font.
-* **`Page#svg(…, font:, bold_font:)`** — optional TrueType fonts for `<text>`; without them WinAnsi Helvetica turns ≈, →, ■… into `?`.
 * **SVG rendering: `<style>` stylesheets** — type, class (multi-valued `class` attribute), id, `*`, compound (`text.dim`) selectors and lists; other selectors are ignored. SVG cascade: presentation attribute < CSS rules (specificity, then source order) < `style` attribute; `!important` honoured.
 * **SVG rendering: `<text>` stroke** — `stroke` on text is drawn (rendering mode 2); with `paint-order: stroke` the stroke goes under the fill (white halo of dimensioned drawings).
 * **SVG rendering: `stroke-linejoin` and `stroke-linecap`.**
@@ -23,11 +19,23 @@ versioning follows https://semver.org/[SemVer].
 
 === Fixed
 
+* **SVG rendering: wrong `transform` away from the origin.** Every transformation (even `translate`) was composed with coordinates already placed on the page: as soon as the SVG was not drawn at (0, 0), the element went elsewhere, often out of frame (Japanese flag disc, Pakistani crescent, north arrow of a drawing…). The renderer now sets a single matrix (position, scale, y-axis flip) and draws in SVG units; `transform` applies as is, and text is locally turned upright.
+* **SVG rendering: `viewBox` origin** (`min-x`, `min-y`) is honoured.
+
+== v1.21.0 — 2026-09-24
+
+=== Added
+
+* **SVG rendering: `text-anchor`** (`start`, `middle`, `end`) on `<text>`, measured with the font in use.
+* **SVG rendering: opacity** — `opacity`, `fill-opacity` and `stroke-opacity` (number or percentage) become an ExtGState; `opacity` multiplies the other two.
+* **SVG rendering: `font-weight`** — `bold`, `bolder` or ≥ 600 use the bold font.
+* **`Page#svg(…, font:, bold_font:)`** — optional TrueType fonts for `<text>`; without them WinAnsi Helvetica turns ≈, →, ■… into `?`.
+
+=== Fixed
+
 * **SVG rendering: inherited properties** — `font-size`, `font-weight` and `text-anchor` set on the root `<svg>` or a `<g>` now apply to `<text>` (the size fell back to 12).
 * **SVG rendering: white space** — runs of white space in a `<text>` collapse to one space, as in SVG.
 * **`Page#svg` no longer changes the caller's current font**: it is restored after drawing.
-* **SVG rendering: wrong `transform` away from the origin.** Every transformation (even `translate`) was composed with coordinates already placed on the page: as soon as the SVG was not drawn at (0, 0), the element went elsewhere, often out of frame (Japanese flag disc, Pakistani crescent, north arrow of a drawing…). The renderer now sets a single matrix (position, scale, y-axis flip) and draws in SVG units; `transform` applies as is, and text is locally turned upright.
-* **SVG rendering: `viewBox` origin** (`min-x`, `min-y`) is honoured.
 
 == v1.20.3 — 2026-08-05
 
