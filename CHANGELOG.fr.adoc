@@ -1,3 +1,18 @@
+== Non publié
+
+=== Ajouté
+
+* **Rendu SVG : `text-anchor`** (`start`, `middle`, `end`) sur les `<text>`, mesuré avec la police utilisée.
+* **Rendu SVG : opacité** — `opacity`, `fill-opacity` et `stroke-opacity` (nombre ou pourcentage) deviennent un ExtGState ; `opacity` multiplie les deux autres.
+* **Rendu SVG : `font-weight`** — `bold`, `bolder` ou ≥ 600 utilisent la police grasse.
+* **`Page#svg(…, font:, bold_font:)`** — polices TrueType optionnelles pour les `<text>` ; sans elles, Helvetica WinAnsi remplace ≈, →, ■… par `?`.
+
+=== Corrigé
+
+* **Rendu SVG : propriétés héritées** — `font-size`, `font-weight` et `text-anchor` posés sur la racine `<svg>` ou un `<g>` s'appliquent aux `<text>` (la taille retombait à 12).
+* **Rendu SVG : espaces** — les suites de blancs d'un `<text>` sont réduites à une espace, comme en SVG.
+* **`Page#svg` ne change plus la police courante** de l'appelant : elle est restaurée après le dessin.
+
 == v1.20.1 — 2026-06-08
 
 === Corrigé

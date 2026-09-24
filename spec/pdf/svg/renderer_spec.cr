@@ -268,4 +268,106 @@ describe PDF::SVG::Renderer do
       io.size.should be > 0
     end
   end
+
+  describe "text" do
+    # Position (x, y) of the first `Td` emitted after the SVG is drawn.
+    td_of = ->(content : String) do
+      m = content.match!(/(-?[\d.]+) (-?[\d.]+) Td/)
+      {m[1].to_f, m[2].to_f}
+    end
+
+    it "honours text-anchor middle and end" do
+      width = PDF::Fonts::Type1.new("Helvetica").string_width("Test", 20.0)
+      {"middle" => width / 2, "end" => width, "start" => 0.0}.each do |anchor, shift|
+        doc = PDF::Document.new
+        doc.page do |page|
+          svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+            <text x="100" y="50" font-size="20" text-anchor="#{anchor}">Test</text>
+          </svg>)
+          page.svg(svg, at: {50, 700})
+          x, _ = td_of.call(page.content_string)
+          x.should be_close(150.0 - shift, 0.01)
+        end
+      end
+    end
+
+    it "inherits font-size and text-anchor from the root <svg> and <g>" do
+      doc = PDF::Document.new
+      doc.page do |page|
+        svg = %(<svg width="200" height="100" font-size="20" xmlns="http://www.w3.org/2000/svg">
+          <g text-anchor="end"><text x="100" y="50">Test</text></g>
+        </svg>)
+        page.svg(svg, at: {50, 700})
+        page.content_string.should contain(" 20 Tf")
+        x, _ = td_of.call(page.content_string)
+        x.should be_close(150.0 - PDF::Fonts::Type1.new("Helvetica").string_width("Test", 20.0), 0.01)
+      end
+    end
+
+    it "uses the bold font for font-weight bold" do
+      doc = PDF::Document.new
+      doc.page do |page|
+        svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+          <text x="10" y="50" font-weight="bold">Gras</text>
+        </svg>)
+        page.svg(svg, at: {50, 700})
+        page.@font_resources.has_key?("Helvetica-Bold").should be_true
+      end
+    end
+
+    it "uses the TrueType font given to page.svg, for glyphs outside WinAnsi" do
+      doc = PDF::Document.new
+      ttf = doc.load_font("spec/fixtures/fonts/DejaVuSans.ttf")
+      doc.page do |page|
+        svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+          <text x="10" y="50">env. ≈ 10 → ■</text>
+        </svg>)
+        page.svg(svg, at: {50, 700}, font: ttf)
+        page.@truetype_font_resources.has_key?(ttf).should be_true
+        page.@font_resources.has_key?("Helvetica").should be_false
+      end
+    end
+
+    it "restores the caller's font after drawing" do
+      doc = PDF::Document.new
+      doc.page do |page|
+        page.font("Courier", size: 9)
+        svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+          <text x="10" y="50" font-size="30">SVG</text>
+        </svg>)
+        page.svg(svg, at: {50, 700})
+        page.@current_font.should eq("Courier")
+        page.@current_font_size.should eq(9.0)
+      end
+    end
+  end
+
+  describe "opacity" do
+    it "turns fill-opacity, stroke-opacity and opacity into an ExtGState" do
+      doc = PDF::Document.new
+      doc.page do |page|
+        svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="50" height="50" fill="red" fill-opacity="0.5"/>
+          <rect x="60" y="0" width="50" height="50" fill="blue" opacity="50%" stroke="black" stroke-opacity="0.5"/>
+        </svg>)
+        page.svg(svg, at: {50, 700})
+        page.content_string.should contain("/GS1 gs")
+        page.content_string.should contain("/GS2 gs")
+        states = page.@ext_g_state_resources.values.map(&.ext_g_state)
+        states.map(&.fill_opacity).should eq([0.5, 0.5])
+        states.map(&.stroke_opacity).should eq([nil, 0.25])
+      end
+    end
+
+    it "leaves the graphics state alone without any opacity" do
+      doc = PDF::Document.new
+      doc.page do |page|
+        svg = %(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="50" height="50" fill="red"/>
+        </svg>)
+        page.svg(svg, at: {50, 700})
+        page.content_string.should_not contain(" gs")
+      end
+    end
+  end
 end

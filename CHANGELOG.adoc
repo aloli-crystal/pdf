@@ -7,6 +7,21 @@ All notable changes to pdf are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== Unreleased
+
+=== Added
+
+* **SVG rendering: `text-anchor`** (`start`, `middle`, `end`) on `<text>`, measured with the font in use.
+* **SVG rendering: opacity** — `opacity`, `fill-opacity` and `stroke-opacity` (number or percentage) become an ExtGState; `opacity` multiplies the other two.
+* **SVG rendering: `font-weight`** — `bold`, `bolder` or ≥ 600 use the bold font.
+* **`Page#svg(…, font:, bold_font:)`** — optional TrueType fonts for `<text>`; without them WinAnsi Helvetica turns ≈, →, ■… into `?`.
+
+=== Fixed
+
+* **SVG rendering: inherited properties** — `font-size`, `font-weight` and `text-anchor` set on the root `<svg>` or a `<g>` now apply to `<text>` (the size fell back to 12).
+* **SVG rendering: white space** — runs of white space in a `<text>` collapse to one space, as in SVG.
+* **`Page#svg` no longer changes the caller's current font**: it is restored after drawing.
+
 == v1.20.3 — 2026-08-05
 
 === Fixed

@@ -31,6 +31,12 @@ module PDF
       # Warnings generated during rendering
       getter warnings : Array(String) = [] of String
 
+      # Optional TrueType fonts for `<text>` elements. Without them the
+      # standard Helvetica (WinAnsi) is used, which cannot show glyphs
+      # outside WinAnsi (≈, →, ■…) : they come out as `?`.
+      getter font : Fonts::TrueTypeFont?
+      getter bold_font : Fonts::TrueTypeFont?
+
       def initialize(
         @page : Page,
         @parser : Parser,
@@ -39,6 +45,8 @@ module PDF
         y : Float64 = 0.0,
         width : Float64? = nil,
         height : Float64? = nil,
+        @font : Fonts::TrueTypeFont? = nil,
+        @bold_font : Fonts::TrueTypeFont? = nil,
       )
         @x = x
         @y = y
@@ -300,19 +308,47 @@ module PDF
       private def draw_text(node : XML::Node) : Nil
         tx = parse_coord(node["x"]?) || 0.0
         ty = parse_coord(node["y"]?) || 0.0
-        content = node.content.strip
+        # SVG collapses runs of white space (xml:space="default").
+        content = node.content.strip.gsub(/\s+/, " ")
         return if content.empty?
 
         px, py = svg_to_pdf(tx, ty)
 
-        font_size = parse_coord(get_style(node, "font-size")) || 12.0
+        # font-size, font-weight and text-anchor are inherited
+        # properties : they are often set once on the root <svg> or a <g>.
+        font_size = parse_coord(inherited_style(node, "font-size")) || 12.0
         font_size *= @y_scale
+        bold = bold_weight?(inherited_style(node, "font-weight"))
 
         page.save_graphics_state
         apply_styles(node)
-        page.font("Helvetica", size: font_size)
+        width = select_text_font(bold, font_size, content)
+        case inherited_style(node, "text-anchor")
+        when "middle" then px -= width / 2
+        when "end"    then px -= width
+        end
         page.text(content, at: {px, py})
         page.restore_graphics_state
+      end
+
+      # Sets the font used for a `<text>` and returns the width of
+      # `content` in that font, needed to honour `text-anchor`.
+      private def select_text_font(bold : Bool, size : Float64, content : String) : Float64
+        ttf = bold ? (@bold_font || @font) : @font
+        if ttf
+          page.font(ttf, size: size)
+          ttf.string_width(content, size)
+        else
+          name = bold ? "Helvetica-Bold" : "Helvetica"
+          page.font(name, size: size)
+          page.document.font(name).string_width(content, size)
+        end
+      end
+
+      private def bold_weight?(value : String?) : Bool
+        return false unless value
+        return true if value == "bold" || value == "bolder"
+        (value.to_i? || 400) >= 600
       end
 
       # Converts SVG coordinates to PDF coordinates.
@@ -348,6 +384,33 @@ module PDF
             page.line_width(w * @x_scale)
           end
         end
+
+        apply_opacity(node)
+      end
+
+      # `opacity` applies to the whole element, `fill-opacity` and
+      # `stroke-opacity` to one paint : the effective alpha is their
+      # product. Set on a `<g>`, the graphics state carries it to the
+      # children.
+      private def apply_opacity(node : XML::Node) : Nil
+        opacity = parse_opacity(get_style(node, "opacity"))
+        fill = parse_opacity(get_style(node, "fill-opacity"))
+        stroke = parse_opacity(get_style(node, "stroke-opacity"))
+        return unless opacity || fill || stroke
+
+        base = opacity || 1.0
+        page.set_opacity(
+          fill: (opacity || fill) ? base * (fill || 1.0) : nil,
+          stroke: (opacity || stroke) ? base * (stroke || 1.0) : nil,
+        )
+      end
+
+      # Parses an opacity value : a number (`0.4`) or a percentage (`40%`).
+      private def parse_opacity(value : String?) : Float64?
+        return nil unless value
+        v = value.strip
+        number = v.ends_with?('%') ? v.rchop.to_f?.try(&./(100.0)) : v.to_f?
+        number.try(&.clamp(0.0, 1.0))
       end
 
       private def apply_fill_and_stroke(node : XML::Node) : Nil
@@ -394,6 +457,19 @@ module PDF
 
         # Fall back to direct attribute
         node[property]?
+      end
+
+      # Like `get_style`, but climbs the ancestors (up to the root
+      # `<svg>`) for inherited properties such as `font-size`.
+      private def inherited_style(node : XML::Node, property : String) : String?
+        current = node
+        while current && current.element?
+          if value = get_style(current, property)
+            return value unless value == "inherit"
+          end
+          current = current.parent
+        end
+        nil
       end
 
       private def parse_coord(value : String?) : Float64?
