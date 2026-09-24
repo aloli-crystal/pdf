@@ -7,7 +7,7 @@ All notable changes to pdf are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
-== Unreleased
+== v1.21.0 — 2026-09-24
 
 === Added
 
