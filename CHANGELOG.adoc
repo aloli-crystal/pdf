@@ -26,21 +26,19 @@ versioning follows https://semver.org/[SemVer].
 
 === Fixed
 
-* `PDF::Table#row_colors` était accepté et stocké mais jamais
-  appliqué au rendu : aucune cellule ne recevait la couleur de
-  fond alternée. Les couleurs sont maintenant appliquées par
-  ligne de données (le header en est exclu), sans écraser un
-  `background_color` déjà fixé explicitement par cellule ou via
-  `cell_style`.
-* `PDF::Page#table` appelait `Table#draw`, qui ne pagine jamais :
-  un tableau plus haut que la page courante continuait de se
-  dessiner hors-page. Route maintenant l'appel via
-  `Table#draw_with_page_breaks`, qui crée les pages
-  supplémentaires nécessaires et répète les lignes d'en-tête.
-* Les `transform` SVG posés directement sur une forme (`<rect>`,
-  `<circle>`, etc.) étaient silencieusement ignorés : seuls les
-  groupes `<g>` en tenaient compte. Le transform est maintenant
-  appliqué autour de chaque branche de rendu.
+* `PDF::Table#row_colors` was accepted and stored but never
+  applied when rendering: no cell received the alternating
+  background colour. Colours are now applied per data row (the
+  header is excluded), without overriding a `background_color`
+  already set explicitly on a cell or through `cell_style`.
+* `PDF::Page#table` called `Table#draw`, which never paginates:
+  a table taller than the current page kept drawing off the page.
+  The call now goes through `Table#draw_with_page_breaks`, which
+  creates the extra pages needed and repeats the header rows.
+* SVG `transform` attributes set directly on a shape (`<rect>`,
+  `<circle>`, etc.) were silently ignored: only `<g>` groups
+  honoured them. The transform is now applied around every
+  rendering branch.
 
 == v1.20.2 — 2026-06-16
 
@@ -55,6 +53,23 @@ versioning follows https://semver.org/[SemVer].
   for naive mergers that would otherwise drop the rotation
   silently. Pair with `qpdf --flatten-rotation` to bake the
   rotation before assembly.
+
+== v1.20.1 — 2026-06-08
+
+=== Fixed
+
+* **SVG rendering: vertical position of `<rect>`.** `draw_rect`
+  passed the TOP-left corner of the SVG rectangle (from
+  `svg_to_pdf`) as the BOTTOM-left corner to `page.rectangle`. The
+  rectangle was therefore drawn upwards from its top edge, offset
+  by its own height — an SVG logo placed at the top of a page
+  ended up off the page (invisible). Points (text, lines, curves)
+  were unaffected; only `<rect>` elements were. The height is now
+  subtracted (`py - h * y_scale`) to get the correct bottom-left
+  corner.
++
+  SVGs made of `<path>` elements (e.g. the country-flags flags)
+  are not affected. 1027 specs green.
 
 == v1.20.0 — 2026-06-06 — Rasterizer : shading-pattern fills (scn /Pattern)
 
