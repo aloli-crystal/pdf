@@ -327,8 +327,45 @@ module PDF
         when "middle" then px -= width / 2
         when "end"    then px -= width
         end
-        page.text(content, at: {px, py})
+        paint_text(node, content, px, py)
         page.restore_graphics_state
+      end
+
+      # Peint le texte selon `fill`, `stroke` et `paint-order`. Le halo
+      # usuel des plans (`text { stroke: #fff; stroke-width: 3px;
+      # paint-order: stroke }`) demande le contour AVANT le remplissage :
+      # deux passes (mode de rendu 1 puis 0), sinon le contour blanc
+      # mangerait les lettres.
+      private def paint_text(node : XML::Node, content : String, x : Float64, y : Float64) : Nil
+        fill = get_style(node, "fill")
+        stroke = get_style(node, "stroke")
+        has_fill = fill != "none" # noir par défaut
+        has_stroke = !stroke.nil? && stroke != "none" && !Color.parse(stroke).nil?
+
+        if !has_stroke
+          page.text(content, at: {x, y}) if has_fill
+        elsif !has_fill
+          page.text_rendering_mode(1)
+          page.text(content, at: {x, y})
+        elsif stroke_before_fill?(node)
+          page.text_rendering_mode(1)
+          page.text(content, at: {x, y})
+          page.text_rendering_mode(0)
+          page.text(content, at: {x, y})
+        else
+          page.text_rendering_mode(2)
+          page.text(content, at: {x, y})
+        end
+      end
+
+      # `paint-order` (hérité) : `normal`, ou une liste de `fill`,
+      # `stroke`, `markers` complétée dans l'ordre par défaut.
+      private def stroke_before_fill?(node : XML::Node) : Bool
+        order = inherited_style(node, "paint-order").try(&.split) || [] of String
+        stroke = order.index("stroke")
+        return false unless stroke
+        fill = order.index("fill")
+        fill.nil? || stroke < fill
       end
 
       # Sets the font used for a `<text>` and returns the width of
@@ -383,6 +420,18 @@ module PDF
           if w = parse_coord(sw)
             page.line_width(w * @x_scale)
           end
+        end
+
+        case get_style(node, "stroke-linejoin")
+        when "round" then page.line_join(:round)
+        when "bevel" then page.line_join(:bevel)
+        when "miter" then page.line_join(:miter)
+        end
+
+        case get_style(node, "stroke-linecap")
+        when "round"  then page.line_cap(:round)
+        when "square" then page.line_cap(:square)
+        when "butt"   then page.line_cap(:butt)
         end
 
         apply_opacity(node)
@@ -442,20 +491,21 @@ module PDF
         page.transform(a, -b, -c, d, e * @x_scale + @x, -f * @y_scale + @y)
       end
 
-      # Gets a style value from either the style attribute or a direct attribute.
+      # Valeur d'une propriété pour `node`, selon la cascade SVG :
+      # attribut de présentation < règles `<style>` (par spécificité,
+      # puis ordre du source) < attribut `style=""`, les déclarations
+      # `!important` passant devant.
       private def get_style(node : XML::Node, property : String) : String?
-        # Check inline style first
-        style = node["style"]?
-        if style
-          style.split(';').each do |declaration|
-            parts = declaration.split(':')
-            if parts.size == 2 && parts[0].strip == property
-              return parts[1].strip
-            end
-          end
+        inline = node["style"]?.try do |style|
+          Stylesheet.parse_declarations(style).reverse.find { |d| d.property == property }
         end
+        css = parser.stylesheet.lookup(node, property)
+        if css && css.important && !inline.try(&.important)
+          return css.value
+        end
+        return inline.value if inline
+        return css.value if css
 
-        # Fall back to direct attribute
         node[property]?
       end
 

@@ -371,3 +371,111 @@ describe PDF::SVG::Renderer do
     end
   end
 end
+
+describe PDF::SVG::Stylesheet do
+  it "parses rules, lists and comments, and skips unsupported selectors" do
+    sheet = PDF::SVG::Stylesheet.new(<<-CSS)
+      /* commentaire { a: b } */
+      text, .cote { fill: red }
+      #nord { stroke: blue !important }
+      g > text { fill: green }
+      a:hover { fill: pink }
+      @media print { text { fill: gray } }
+      * { stroke-width: 2 }
+      CSS
+    sheet.rules.map { |r| r.selector.specificity }.should eq([{0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {0, 0, 0}])
+    sheet.rules[2].declarations.first.important.should be_true
+  end
+
+  it "parses simple and compound selectors" do
+    sel = PDF::SVG::Stylesheet.parse_selector("text.cote.grande#a").not_nil!
+    sel.tag.should eq("text")
+    sel.classes.should eq(["cote", "grande"])
+    sel.id.should eq("a")
+    PDF::SVG::Stylesheet.parse_selector("*").not_nil!.specificity.should eq({0, 0, 0})
+    PDF::SVG::Stylesheet.parse_selector("g text").should be_nil
+    PDF::SVG::Stylesheet.parse_selector("[fill]").should be_nil
+  end
+end
+
+describe "SVG <style>" do
+  # Couleurs de remplissage (`r g b rg`) émises, dans l'ordre.
+  fills_of = ->(content : String) do
+    content.scan(/([\d.]+) ([\d.]+) ([\d.]+) rg/).map { |m| {m[1].to_f, m[2].to_f, m[3].to_f} }
+  end
+  red = {1.0, 0.0, 0.0}
+  green = {0.0, 0.502, 0.0}
+  blue = {0.0, 0.0, 1.0}
+
+  render = ->(svg : String) do
+    content = ""
+    PDF::Document.new.page do |page|
+      page.svg(svg, at: {50, 700})
+      content = page.content_string
+    end
+    content
+  end
+
+  it "applies rules by type, class and id, including multi-valued class" do
+    content = render.call(%(<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <style>rect { fill: red } .b { fill: blue } #g { fill: green }</style>
+      <rect width="10" height="10"/>
+      <rect class="a b" width="10" height="10"/>
+      <rect id="g" class="b" width="10" height="10"/>
+    </svg>))
+    fills_of.call(content).should eq([red, blue, green])
+  end
+
+  it "cascades presentation attribute < CSS < style attribute" do
+    content = render.call(%(<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <style><![CDATA[ .c { fill: green } ]]></style>
+      <rect fill="red" width="10" height="10"/>
+      <rect class="c" fill="red" width="10" height="10"/>
+      <rect class="c" fill="red" style="fill: blue" width="10" height="10"/>
+    </svg>))
+    fills_of.call(content).should eq([red, green, blue])
+  end
+
+  it "orders rules by specificity, then source order" do
+    content = render.call(%(<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <style>.c { fill: green } rect { fill: red } .d { fill: blue }</style>
+      <rect class="c" width="10" height="10"/>
+      <rect class="c d" width="10" height="10"/>
+    </svg>))
+    fills_of.call(content).should eq([green, blue])
+  end
+
+  it "inherits a CSS font-size set on the root through inherited_style" do
+    content = render.call(%(<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <style>svg { font-size: 20px }</style>
+      <text x="10" y="50">Test</text>
+    </svg>))
+    content.should contain(" 20 Tf")
+  end
+
+  it "draws a paint-order: stroke halo under the text fill" do
+    content = render.call(%(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+      <style>text{paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}</style>
+      <text x="10" y="50">Cote</text>
+    </svg>))
+    content.should contain("1 1 1 RG")
+    content.should contain("1 j")
+    # Contour d'abord (mode 1), remplissage ensuite (mode 0).
+    content.should match(/1 Tr\nBT\n.*?\(Cote\) Tj\nET\n0 Tr\nBT\n.*?\(Cote\) Tj\nET/m)
+  end
+
+  it "strokes text over its fill with the default paint order" do
+    content = render.call(%(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+      <text x="10" y="50" stroke="red">Cote</text>
+    </svg>))
+    content.should contain("2 Tr")
+    content.scan("(Cote) Tj").size.should eq(1)
+  end
+
+  it "keeps plain text in the default fill mode" do
+    content = render.call(%(<svg width="200" height="100" xmlns="http://www.w3.org/2000/svg">
+      <text x="10" y="50">Cote</text>
+    </svg>))
+    content.should_not contain(" Tr")
+  end
+end

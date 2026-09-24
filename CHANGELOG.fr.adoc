@@ -15,6 +15,10 @@ le versionnage respecte https://semver.org/lang/fr/[SemVer].
 * **Rendu SVG : opacité** — `opacity`, `fill-opacity` et `stroke-opacity` (nombre ou pourcentage) deviennent un ExtGState ; `opacity` multiplie les deux autres.
 * **Rendu SVG : `font-weight`** — `bold`, `bolder` ou ≥ 600 utilisent la police grasse.
 * **`Page#svg(…, font:, bold_font:)`** — polices TrueType optionnelles pour les `<text>` ; sans elles, Helvetica WinAnsi remplace ≈, →, ■… par `?`.
+* **Rendu SVG : feuilles de style `<style>`** — sélecteurs de type, classe (attribut `class` à plusieurs valeurs), id, `*`, composés (`text.cote`) et listes ; les autres sont ignorés. Cascade SVG : attribut de présentation < règles CSS (spécificité, puis ordre du source) < attribut `style` ; `!important` respecté.
+* **Rendu SVG : contour des `<text>`** — `stroke` sur un texte est dessiné (mode de rendu 2) ; avec `paint-order: stroke`, le contour passe sous le remplissage (halo blanc des plans cotés).
+* **Rendu SVG : `stroke-linejoin` et `stroke-linecap`.**
+* **`Page#text_rendering_mode`** — opérateur `Tr` (remplissage, contour, invisible, découpe).
 
 === Corrigé
 

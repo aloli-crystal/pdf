@@ -22,11 +22,15 @@ module PDF
       # Warnings generated during parsing
       getter warnings : Array(String) = [] of String
 
+      # Règles CSS des éléments `<style>` du document
+      getter stylesheet : Stylesheet = Stylesheet.new
+
       def initialize(svg_data : String)
         doc = XML.parse(svg_data)
         @root = find_svg_root(doc)
         @width, @height = parse_dimensions
         @viewbox = parse_viewbox
+        collect_styles(@root)
       end
 
       # Returns all child elements of the SVG root.
@@ -45,6 +49,19 @@ module PDF
         # If the document itself is the svg element
         return doc if doc.name == "svg"
         raise ArgumentError.new("No <svg> root element found in SVG data")
+      end
+
+      # Réunit, dans l'ordre du source, le texte (ou CDATA) des
+      # éléments `<style>`, où qu'ils soient.
+      private def collect_styles(node : XML::Node) : Nil
+        node.children.each do |child|
+          next unless child.element?
+          if child.name == "style"
+            @stylesheet.add(child.content)
+          else
+            collect_styles(child)
+          end
+        end
       end
 
       private def parse_dimensions : Tuple(Float64, Float64)

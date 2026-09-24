@@ -857,6 +857,20 @@ module PDF
       line_join(join)
     end
 
+    # Sets the text rendering mode (`Tr`, ISO 32000-1 § 9.3.6) for the
+    # following text : 0 fill, 1 stroke, 2 fill then stroke,
+    # 3 invisible, 4–7 the same plus adding to the clipping path.
+    # Part of the graphics state : `restore_graphics_state` resets it.
+    #
+    # ```
+    # page.text_rendering_mode(1) # outlined text
+    # ```
+    def text_rendering_mode(mode : Int32) : self
+      raise ArgumentError.new("Unknown text rendering mode: #{mode}") unless 0 <= mode <= 7
+      @content << "#{mode} Tr\n"
+      self
+    end
+
     # Sets the miter limit for line joins.
     # The miter limit controls when mitered joins are converted to bevel joins.
     # Default is 10.0.
