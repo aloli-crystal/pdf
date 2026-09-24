@@ -1,3 +1,12 @@
+= Journal des modifications
+:toc: left
+:toc-title: Versions
+:toclevels: 2
+
+Toutes les évolutions notables de pdf sont consignées ici. Le
+format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog] et
+le versionnage respecte https://semver.org/lang/fr/[SemVer].
+
 == v1.21.0 — 2026-09-24
 
 === Ajouté
@@ -12,6 +21,40 @@
 * **Rendu SVG : propriétés héritées** — `font-size`, `font-weight` et `text-anchor` posés sur la racine `<svg>` ou un `<g>` s'appliquent aux `<text>` (la taille retombait à 12).
 * **Rendu SVG : espaces** — les suites de blancs d'un `<text>` sont réduites à une espace, comme en SVG.
 * **`Page#svg` ne change plus la police courante** de l'appelant : elle est restaurée après le dessin.
+
+== v1.20.3 — 2026-08-05
+
+=== Corrigé
+
+* `PDF::Table#row_colors` était accepté et stocké mais jamais
+  appliqué au rendu : aucune cellule ne recevait la couleur de
+  fond alternée. Les couleurs sont maintenant appliquées par
+  ligne de données (le header en est exclu), sans écraser un
+  `background_color` déjà fixé explicitement par cellule ou via
+  `cell_style`.
+* `PDF::Page#table` appelait `Table#draw`, qui ne pagine jamais :
+  un tableau plus haut que la page courante continuait de se
+  dessiner hors-page. Route maintenant l'appel via
+  `Table#draw_with_page_breaks`, qui crée les pages
+  supplémentaires nécessaires et répète les lignes d'en-tête.
+* Les `transform` SVG posés directement sur une forme (`<rect>`,
+  `<circle>`, etc.) étaient silencieusement ignorés : seuls les
+  groupes `<g>` en tenaient compte. Le transform est maintenant
+  appliqué autour de chaque branche de rendu.
+
+== v1.20.2 — 2026-06-16
+
+=== Ajouté
+
+* `PDF::ReaderPage#rotate : Int32` lit l'attribut `/Rotate` de la
+  page (ISO 32000-1 § 14.8), hérité à travers l'arbre `/Pages`.
+  Renvoie 0/90/180/270 (normalisé dans `[0, 360[`). Permet de
+  détecter les PDF dont les pages ont été tournées par une
+  visionneuse (Aperçu, Acrobat) via la clé `/Rotate` plutôt qu'en
+  réécrivant le contenu de la page — important en aval pour les
+  outils de fusion naïfs qui perdraient sinon la rotation sans
+  rien dire. À combiner avec `qpdf --flatten-rotation` pour figer
+  la rotation avant l'assemblage.
 
 == v1.20.1 — 2026-06-08
 
@@ -29,14 +72,6 @@
 +
   Les SVG composés de `<path>` (p. ex. les drapeaux country-flags)
   ne sont pas concernés. 1027 specs verts.
-= Journal des modifications
-:toc: left
-:toc-title: Versions
-:toclevels: 2
-
-Toutes les évolutions notables de pdf sont consignées ici. Le
-format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog] et
-le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
 == v1.20.0 — 2026-06-06 — Rasterizer : remplissage par motif de dégradé (scn /Pattern)
 
