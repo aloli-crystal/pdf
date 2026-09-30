@@ -7,6 +7,12 @@ Toutes les évolutions notables de pdf sont consignées ici. Le
 format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog] et
 le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== Non publié
+
+=== Corrigé
+
+* **Profils ICC livrés lus dans l'arborescence de construction à l'exécution.** `ICCBased.srgb_v4`, `.srgb_display` et `.fogra39` (donc `OutputIntent.srgb` / `.fogra39`, et tout PDF/A produit par pdf-a) ouvraient `src/pdf/data/icc/*.icc` à un chemin fixé à la compilation : une fois le programme installé ailleurs (paquet, serveur), la génération échouait. Les profils sont désormais intégrés au programme à la compilation (macro `read_file`), et seulement ceux qui servent : `OutputIntent.srgb` ajoute 3 Ko, FOGRA39 (1,8 Mo) n'est lié que si `fogra39` est appelé. `SRGB_V4_PATH`, `SRGB_DISPLAY_PATH` et `FOGRA39_PATH` restent, comme chemins de la source des profils ; ils ne sont plus nécessaires à l'exécution.
+
 == v1.22.0 — 2026-09-24
 
 === Ajouté

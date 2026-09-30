@@ -7,6 +7,12 @@ All notable changes to pdf are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== Unreleased
+
+=== Fixed
+
+* **Bundled ICC profiles read from the build tree at run time.** `ICCBased.srgb_v4`, `.srgb_display` and `.fogra39` (hence `OutputIntent.srgb` / `.fogra39`, and every PDF/A produced through pdf-a) opened `src/pdf/data/icc/*.icc` at a path fixed at compile time: once the program was installed elsewhere (package, server), generation failed. The profiles are now compiled into the program (`read_file` macro), and only those actually used: `OutputIntent.srgb` adds 3 KB, FOGRA39 (1.8 MB) is linked only if `fogra39` is called. `SRGB_V4_PATH`, `SRGB_DISPLAY_PATH` and `FOGRA39_PATH` remain, as the profiles' source paths; they are no longer needed at run time.
+
 == v1.22.0 — 2026-09-24
 
 === Added

@@ -752,6 +752,10 @@ couvre fonctionnellement avec un PDF 1.7 sous-jacent.
   `src/pdf/data/icc/`, accessibles via `ColorSpaces::ICCBased.srgb_v4`
   et `.fogra39`. Coût : +1,8 Mo dans le shard, acceptable face au
   bénéfice (PDF self-contained sans dépendance externe). ✅ Livré v0.5.8.
+  Depuis v1.22.1, les profils sont intégrés au programme à la
+  compilation (`read_file`) au lieu d'être lus à l'exécution dans
+  l'arborescence du shard, absente une fois le programme installé ;
+  seuls les profils effectivement appelés sont liés.
 . **J1 clos 2026-06-01** (cible `pdf 0.6.0` atteinte) : OutputIntent +
   ICCBased (v0.5.8) ; AcroForm complet — signature, appearance
   custom, drapeaux étendus (v0.5.7 à v0.5.10) ; Embedded files /

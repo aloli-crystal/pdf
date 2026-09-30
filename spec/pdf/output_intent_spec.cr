@@ -17,6 +17,42 @@ describe PDF::ColorSpaces::ICCBased do
     end
   end
 
+  describe "bundled profiles" do
+    profiles = {
+      "srgb_v4"      => {PDF::ColorSpaces::ICCBased::SRGB_V4_PATH, -> { PDF::ColorSpaces::ICCBased.srgb_v4 }},
+      "srgb_display" => {PDF::ColorSpaces::ICCBased::SRGB_DISPLAY_PATH, -> { PDF::ColorSpaces::ICCBased.srgb_display }},
+      "fogra39"      => {PDF::ColorSpaces::ICCBased::FOGRA39_PATH, -> { PDF::ColorSpaces::ICCBased.fogra39 }},
+    }
+
+    profiles.each do |name, (path, factory)|
+      it "#{name} returns the bytes of #{File.basename(path)}" do
+        icc = factory.call
+        icc.data.should eq(File.read(path).to_slice)
+      end
+    end
+
+    # An installed program (FreeBSD package, server) no longer has the
+    # shard's source tree: the profiles must not be looked up there.
+    it "work without the data/icc directory" do
+      icc_dir = File.dirname(PDF::ColorSpaces::ICCBased::SRGB_DISPLAY_PATH)
+      hidden = "#{icc_dir}.hidden-by-spec"
+      expected = profiles.transform_values { |(path, _)| File.read(path).to_slice }
+      File.rename(icc_dir, hidden)
+      begin
+        Dir.exists?(icc_dir).should be_false
+        profiles.each do |name, (_, factory)|
+          factory.call.data.should eq(expected[name])
+        end
+        pdf = PDF::Document.new
+        pdf.page { |_| }
+        pdf.output_intent = PDF::OutputIntent.srgb
+        pdf.to_slice.map(&.chr).join.should contain("/DestOutputProfile")
+      ensure
+        File.rename(hidden, icc_dir)
+      end
+    end
+  end
+
   describe ".new" do
     it "rejects byte arrays smaller than 128 bytes (ICC header size)" do
       expect_raises(ArgumentError, /too small/) do
