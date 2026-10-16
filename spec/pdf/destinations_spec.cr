@@ -69,10 +69,10 @@ describe PDF::Document do
   describe "#add_dest" do
     it "adds named destinations to the catalog" do
       pdf = PDF::Document.new
-      page = pdf.page { |p|
+      page = pdf.page do |p|
         p.font "Helvetica", size: 12
         p.text "Chapter 1", at: {72, 720}
-      }
+      end
 
       page_ref = page.page_reference
       dest = PDF::Destination.fit(page_ref)

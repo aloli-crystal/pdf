@@ -97,9 +97,7 @@ module PDF
               parse_format6(io)
             when 12
               parse_format12(io)
-            else
-              # Unsupported format, skip
-              nil
+              # Other formats are unsupported: skipped (nil)
             end
           end
 

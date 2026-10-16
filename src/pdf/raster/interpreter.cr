@@ -199,7 +199,7 @@ module PDF
       # Boîte de détourage en pixels (Int), ou nil si pas de clip.
       private def clip_rect : Tuple(Int32, Int32, Int32, Int32)?
         clip = @state.clip
-        return nil unless clip
+        return unless clip
         bb = clip.bbox
         {bb[0].floor.to_i, bb[1].floor.to_i, bb[2].ceil.to_i, bb[3].ceil.to_i}
       end

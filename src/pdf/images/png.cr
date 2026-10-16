@@ -127,10 +127,10 @@ module PDF
 
       # Create the soft mask stream for transparency
       def soft_mask_stream : Objects::Stream?
-        return nil unless @has_alpha
+        return unless @has_alpha
 
         alpha = @alpha_data
-        return nil unless alpha
+        return unless alpha
 
         stream = Objects::Stream.new
         stream.data = alpha

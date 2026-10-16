@@ -78,21 +78,21 @@ describe "Integration: annotations + destinations + outline" do
     pdf = PDF::Document.new
     pdf.title = "Test Document"
 
-    page1 = pdf.page(size: :a4) { |p|
+    page1 = pdf.page(size: :a4) do |p|
       p.font("Helvetica-Bold", size: 24)
       p.text("Chapter 1: Introduction", at: {72, 750})
       p.font("Helvetica", size: 12)
       p.text("See chapter 2 for details.", at: {72, 700})
       p.link_dest(rect: {72, 690, 250, 710}, dest: "chapter-2")
-    }
+    end
 
-    page2 = pdf.page(size: :a4) { |p|
+    page2 = pdf.page(size: :a4) do |p|
       p.font("Helvetica-Bold", size: 24)
       p.text("Chapter 2: Details", at: {72, 750})
       p.font("Helvetica", size: 12)
       p.text("Visit Crystal website", at: {72, 700})
       p.link_uri(rect: {72, 690, 250, 710}, uri: "https://crystal-lang.org")
-    }
+    end
 
     # Named destinations
     pdf.add_dest("chapter-1", PDF::Destination.fit(page1.page_reference))

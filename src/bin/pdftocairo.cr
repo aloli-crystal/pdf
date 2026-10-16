@@ -94,7 +94,7 @@ end
 
 begin
   reader = PDF::Reader.open(input, password)
-rescue ex : PDF::EncryptedPdfError
+rescue PDF::EncryptedPdfError
   STDERR.puts "Erreur : document chiffré — fournissez -p / --password."
   exit 3
 rescue ex

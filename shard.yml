@@ -1,5 +1,5 @@
 name: pdf
-version: 1.22.1
+version: 1.22.2
 
 description: |
   A pure Crystal library for low-level PDF generation.
@@ -27,14 +27,12 @@ dependencies:
     version: "~> 5.0"
 
 development_dependencies:
-  # Épinglée sur 1.6.x : shard.lock n'étant pas suivi, `~> 1.6` laissait
-  # la CI prendre ameba 1.7.0, qui ne compile plus bin/ameba à
-  # l'installation et ajoute des règles (170 avertissements). Le passage
-  # à 1.7 se fera avec celui à un Crystal récent (voir check-ameba.yml
-  # d'asciicrystal).
+  # Passée à 1.7 avec la CI en Crystal 1.22.0 (ameba 1.6.x ne compile
+  # plus après Crystal 1.21). La 1.7 ne compile plus bin/ameba à
+  # l'installation (voir check-ameba.yml d'asciicrystal).
   ameba:
     github: crystal-ameba/ameba
-    version: "~> 1.6.4"
+    version: "~> 1.7"
 
 # CLI metadata tools (poppler-utils equivalents). Pure metadata
 # reading over PDF::Reader — no rendering. Reachable on their own or

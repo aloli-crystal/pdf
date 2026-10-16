@@ -52,11 +52,11 @@ describe PDF::Page do
   describe "#add_annotation" do
     it "adds annotation to page and serializes in PDF" do
       pdf = PDF::Document.new
-      page = pdf.page { |p|
+      page = pdf.page do |p|
         p.font "Helvetica", size: 12
         p.text "Click here", at: {72, 720}
         p.link_uri(rect: {72, 710, 150, 730}, uri: "https://example.com")
-      }
+      end
 
       output = pdf.to_slice
       content = String.new(output)
@@ -70,11 +70,11 @@ describe PDF::Page do
   describe "#link_dest" do
     it "adds internal link annotation" do
       pdf = PDF::Document.new
-      page = pdf.page { |p|
+      page = pdf.page do |p|
         p.font "Helvetica", size: 12
         p.text "Go to chapter", at: {72, 720}
         p.link_dest(rect: {72, 710, 180, 730}, dest: "ch1")
-      }
+      end
 
       output = pdf.to_slice
       content = String.new(output)

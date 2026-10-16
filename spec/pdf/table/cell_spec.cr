@@ -41,7 +41,7 @@ describe PDF::Table::Cell do
     end
 
     it "creates a cell from a hash with content" do
-      data = Hash(Symbol, String | Int32 | Float64 | Bool | Nil).new
+      data = Hash(Symbol, String | Int32 | Float64 | Bool?).new
       data[:content] = "Hello"
       data[:colspan] = 2
       cell = PDF::Table::Cell.make(data)
@@ -50,7 +50,7 @@ describe PDF::Table::Cell do
     end
 
     it "creates a cell from a hash with background_color" do
-      data = Hash(Symbol, String | Int32 | Float64 | Bool | Nil).new
+      data = Hash(Symbol, String | Int32 | Float64 | Bool?).new
       data[:content] = "Hello"
       data[:background_color] = "CCCCCC"
       cell = PDF::Table::Cell.make(data)

@@ -133,7 +133,7 @@ module PDF
     # or nil if no outline was defined.
     def finalize! : Objects::Reference?
       root_obj = @root
-      return nil unless root_obj
+      return unless root_obj
 
       # Build the root dictionary
       root_dict = Objects::Dictionary.new

@@ -93,7 +93,7 @@ describe PDF::Table do
 
   describe "colspan support" do
     it "handles cells with colspan" do
-      hash_cell = Hash(Symbol, String | Int32 | Float64 | Bool | Nil).new
+      hash_cell = Hash(Symbol, String | Int32 | Float64 | Bool?).new
       hash_cell[:content] = "Wide"
       hash_cell[:colspan] = 2
 
@@ -141,7 +141,7 @@ describe PDF::Table do
             ["C", "D"],
           ],
           column_widths: [100.0, 100.0],
-          cell_style: ({:background_color => "EEEEEE"} of Symbol => String | Float64 | Bool | Nil),
+          cell_style: ({:background_color => "EEEEEE"} of Symbol => String | Float64 | Bool?),
         )
         table.draw(page, x: 50.0, y: 700.0)
       end
@@ -251,7 +251,7 @@ describe PDF::Table do
     end
 
     it "does not override an explicit per-cell background with row_colors" do
-      hash_cell = Hash(Symbol, String | Int32 | Float64 | Bool | Nil).new
+      hash_cell = Hash(Symbol, String | Int32 | Float64 | Bool?).new
       hash_cell[:content] = "A"
       hash_cell[:background_color] = "FF0000"
 

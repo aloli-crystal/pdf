@@ -261,7 +261,7 @@ module PDF
             true # arrays, numbers, names, strings, bools, nulls
           end
         end
-        return nil if candidates.empty?
+        return if candidates.empty?
 
         # Reserve the object number for the ObjStm itself.
         objstm_num = @document.allocate_object_id

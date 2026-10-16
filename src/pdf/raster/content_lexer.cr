@@ -180,7 +180,6 @@ module PDF
         when '0'..'9' then (c.ord - '0'.ord).to_u8
         when 'a'..'f' then (c.ord - 'a'.ord + 10).to_u8
         when 'A'..'F' then (c.ord - 'A'.ord + 10).to_u8
-        else               nil
         end
       end
 

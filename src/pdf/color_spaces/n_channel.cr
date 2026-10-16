@@ -151,7 +151,7 @@ module PDF
       # `solidities` / `printing_order` / `dot_gain`, or `nil` when
       # none were supplied.
       private def build_mixing_hints : Objects::Dictionary?
-        return nil unless @solidities || @printing_order || @dot_gain
+        return unless @solidities || @printing_order || @dot_gain
         hints = Objects::Dictionary.new
 
         if solidities = @solidities

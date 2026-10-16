@@ -73,7 +73,7 @@ module PDF
 
       # Valeur CSS de `property` pour `node`, ou nil.
       def lookup(node : XML::Node, property : String) : Declaration?
-        return nil if @rules.empty?
+        return if @rules.empty?
         declarations_for(node)[property]?
       end
 
@@ -99,11 +99,11 @@ module PDF
       # Sélecteur simple, ou nil s'il n'est pas géré.
       def self.parse_selector(text : String) : Selector?
         m = SELECTOR_RE.match(text)
-        return nil unless m
+        return unless m
         tag = m[1]?
         tag = nil if tag == "*"
         suffix = m[2]
-        return nil if tag.nil? && suffix.empty? && text != "*"
+        return if tag.nil? && suffix.empty? && text != "*"
         classes = [] of String
         id = nil
         suffix.scan(/([.#])([\w-]+)/) do |part|

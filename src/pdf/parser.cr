@@ -323,8 +323,6 @@ module PDF
               parse_object_at(offset).value
             elsif (compressed = resolve_compressed_object(len_obj.object_number))
               compressed.value
-            else
-              nil
             end
           @pos = saved_pos
           if num = length_value.try(&.as?(Objects::Number))
@@ -589,7 +587,7 @@ module PDF
     # Comparaison purement octet-à-octet — n'utilise pas la sémantique
     # de String / d'UTF-8 (cf. `find_xref_offset` pour le pourquoi).
     private def byte_rindex(haystack : Bytes, needle : Bytes, from : Int64) : Int64?
-      return nil if needle.size == 0 || needle.size > haystack.size - from
+      return if needle.size == 0 || needle.size > haystack.size - from
       i = haystack.size.to_i64 - needle.size
       while i >= from
         match = true
@@ -744,20 +742,20 @@ module PDF
     # objets, en clair.
     def resolve_compressed_object(obj_num : Int32) : Objects::Indirect?
       ref = @compressed_objects[obj_num]?
-      return nil unless ref
+      return unless ref
       objstm_num, index = ref
 
       # Charger l'object stream s'il n'est pas déjà en cache
       objstm_indirect = @objects[objstm_num]?
       unless objstm_indirect
         offset = @xref[objstm_num]?
-        return nil unless offset
+        return unless offset
         objstm_indirect = parse_object_at(offset)
         @objects[objstm_num] = objstm_indirect
       end
 
       stream = objstm_indirect.value.as?(Objects::Stream)
-      return nil unless stream
+      return unless stream
       dict = stream.dictionary
       n = dict["N"]?.try(&.as?(Objects::Number)).try(&.to_i64).try(&.to_i32) || 0
       first = dict["First"]?.try(&.as?(Objects::Number)).try(&.to_i64).try(&.to_i32) || 0
@@ -775,7 +773,7 @@ module PDF
         pairs << {num, off}
       end
 
-      return nil if index < 0 || index >= pairs.size
+      return if index < 0 || index >= pairs.size
       target_num, target_offset = pairs[index]
       sub_parser.seek((first + target_offset).to_i64)
       value = sub_parser.parse_value

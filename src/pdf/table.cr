@@ -21,7 +21,7 @@ module PDF
   # ```
   class Table
     # Type alias for cell input data
-    alias CellData = String | Hash(Symbol, String | Int32 | Float64 | Bool | Nil)
+    alias CellData = String | Hash(Symbol, String | Int32 | Float64 | Bool?)
 
     # The grid of cells (row-major order)
     getter cells : Array(Array(Cell))
@@ -45,7 +45,7 @@ module PDF
     property table_width : Float64? = nil
 
     # Cell style defaults
-    property cell_style : Hash(Symbol, String | Float64 | Bool | Nil) = {} of Symbol => String | Float64 | Bool | Nil
+    property cell_style : Hash(Symbol, String | Float64 | Bool?) = {} of Symbol => String | Float64 | Bool?
 
     # Row colors for alternating stripes
     property row_colors : Array(String)? = nil
@@ -56,13 +56,13 @@ module PDF
       header : Bool | Int32 = false,
       column_widths : Array(Float64)? = nil,
       table_width : Float64? = nil,
-      cell_style : Hash(Symbol, String | Float64 | Bool | Nil)? = nil,
+      cell_style : Hash(Symbol, String | Float64 | Bool?)? = nil,
       row_colors : Array(String)? = nil,
     )
       @header = header.is_a?(Bool) ? (header ? 1 : 0) : header
       @table_width = table_width
       @row_colors = row_colors
-      @cell_style = cell_style || {} of Symbol => String | Float64 | Bool | Nil
+      @cell_style = cell_style || {} of Symbol => String | Float64 | Bool?
 
       # Build cell grid from data
       @cells = build_cells(data)

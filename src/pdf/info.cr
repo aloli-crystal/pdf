@@ -159,7 +159,7 @@ module PDF
     # ou nil si elle ne correspond à aucun format standard.
     def page_size_name : String?
       size = @page_size
-      return nil unless size
+      return unless size
       w, h = size
       # On compare indépendamment de l'orientation.
       lo, hi = {w, h}.minmax
@@ -187,17 +187,17 @@ module PDF
     SIZE_TOLERANCE = 3.0
 
     private def self.resolve_dict(reader : PDF::Reader, obj : PDF::Objects::Base?) : PDF::Objects::Dictionary?
-      return nil unless obj
+      return unless obj
       resolved = reader.resolve(obj)
       resolved.as?(PDF::Objects::Dictionary)
     end
 
     private def self.string_field(reader : PDF::Reader, dict : PDF::Objects::Dictionary?, key : String) : String?
-      return nil unless dict
+      return unless dict
       value = dict[key]?
-      return nil unless value
+      return unless value
       str = reader.resolve(value).as?(PDF::Objects::Str)
-      return nil unless str
+      return unless str
       decode_text_string(str.value)
     end
 
@@ -247,12 +247,12 @@ module PDF
     # §7.9.4). Tous les champs après l'année sont optionnels. Retourne
     # nil si la chaîne est absente ou non analysable.
     def self.parse_date(raw : String?) : Time?
-      return nil unless raw
+      return unless raw
       s = raw.lchop("D:")
-      return nil if s.size < 4
+      return if s.size < 4
 
       year = s[0, 4].to_i?
-      return nil unless year
+      return unless year
       month = (s[4, 2]?.try(&.to_i?)) || 1
       day = (s[6, 2]?.try(&.to_i?)) || 1
       hour = (s[8, 2]?.try(&.to_i?)) || 0
@@ -271,7 +271,7 @@ module PDF
       return Time::Location::UTC unless tail && !tail.empty?
       sign = tail[0]
       return Time::Location::UTC if sign == 'Z'
-      return nil unless sign == '+' || sign == '-'
+      return unless sign == '+' || sign == '-'
 
       digits = tail[1..].gsub('\'', "")
       oh = (digits[0, 2]?.try(&.to_i?)) || 0

@@ -107,7 +107,7 @@ module PDF
           separation = Separation.new(name: name, alternate: @alternate, c1: @c1_per_component[i])
           colorants[name] = separation.to_array(alternate_ref)
         end
-        return nil if colorants.empty?
+        return if colorants.empty?
 
         attributes = Objects::Dictionary.new
         attributes["Colorants"] = colorants

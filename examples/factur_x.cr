@@ -14,17 +14,17 @@ require "../src/pdf"
 # EN 16931 ; ici on attache un placeholder pour illustrer la
 # mécanique d'embedding).
 factur_xml = <<-XML
-<?xml version="1.0" encoding="UTF-8"?>
-<rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">
-  <rsm:ExchangedDocument>
-    <ram:ID>2026-DEMO-001</ram:ID>
-    <ram:TypeCode>380</ram:TypeCode>
-    <ram:IssueDateTime>
-      <udt:DateTimeString format="102">20260601</udt:DateTimeString>
-    </ram:IssueDateTime>
-  </rsm:ExchangedDocument>
-</rsm:CrossIndustryInvoice>
-XML
+  <?xml version="1.0" encoding="UTF-8"?>
+  <rsm:CrossIndustryInvoice xmlns:rsm="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100">
+    <rsm:ExchangedDocument>
+      <ram:ID>2026-DEMO-001</ram:ID>
+      <ram:TypeCode>380</ram:TypeCode>
+      <ram:IssueDateTime>
+        <udt:DateTimeString format="102">20260601</udt:DateTimeString>
+      </ram:IssueDateTime>
+    </rsm:ExchangedDocument>
+  </rsm:CrossIndustryInvoice>
+  XML
 
 pdf = PDF::Document.new
 pdf.title = "Facture Démo ALOLI Factur-X"

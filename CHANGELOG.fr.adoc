@@ -7,6 +7,12 @@ Toutes les évolutions notables de pdf sont consignées ici. Le
 format suit https://keepachangelog.com/fr/1.1.0/[Keep a Changelog] et
 le versionnage respecte https://semver.org/lang/fr/[SemVer].
 
+== v1.22.2 — 2026-10-16
+
+=== Modifié
+
+* ameba 1.7 et Crystal 1.22.0 en CI ; nouvelles règles appliquées, aucun changement de comportement.
+
 == v1.22.1 — 2026-09-30
 
 === Corrigé

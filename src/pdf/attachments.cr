@@ -207,19 +207,19 @@ module PDF
     # spécification de fichier (/Filespec). Retourne nil si la structure
     # est incomplète (pas de flux embarqué exploitable).
     private def self.from_filespec(reader : PDF::Reader, filespec : PDF::Objects::Base?) : AttachedFile?
-      return nil unless filespec
+      return unless filespec
       spec = reader.resolve(filespec).as?(PDF::Objects::Dictionary)
-      return nil unless spec
+      return unless spec
 
       ef = resolve_dict(reader, spec["EF"]?)
-      return nil unless ef
+      return unless ef
 
       # Le flux embarqué : /F en priorité, /UF en repli.
       ef_ref = ef["F"]? || ef["UF"]?
-      return nil unless ef_ref
+      return unless ef_ref
       obj_num = ef_ref.as?(PDF::Objects::Reference).try(&.object_number) || 0
       stream = reader.resolve(ef_ref).as?(PDF::Objects::Stream)
-      return nil unless stream
+      return unless stream
 
       name = text_string(reader, spec["UF"]?) ||
              text_string(reader, spec["F"]?) ||
@@ -278,14 +278,14 @@ module PDF
     end
 
     private def self.resolve_dict(reader : PDF::Reader, obj : PDF::Objects::Base?) : PDF::Objects::Dictionary?
-      return nil unless obj
+      return unless obj
       reader.resolve(obj).as?(PDF::Objects::Dictionary)
     end
 
     private def self.text_string(reader : PDF::Reader, obj : PDF::Objects::Base?) : String?
-      return nil unless obj
+      return unless obj
       str = reader.resolve(obj).as?(PDF::Objects::Str)
-      return nil unless str
+      return unless str
       PDF::Info.decode_text_string(str.value)
     end
   end

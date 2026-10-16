@@ -80,7 +80,7 @@ module PDF
       end
 
       # Creates a cell from various input types.
-      def self.make(content : String | Hash(Symbol, String | Int32 | Float64 | Bool | Nil) | Cell) : Cell
+      def self.make(content : String | Hash(Symbol, String | Int32 | Float64 | Bool?) | Cell) : Cell
         case content
         when String
           Cell.new(content)

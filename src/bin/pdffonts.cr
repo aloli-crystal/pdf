@@ -74,7 +74,7 @@ end
 
 begin
   fonts = PDF::FontInfo.list(path, password)
-rescue ex : PDF::EncryptedPdfError
+rescue PDF::EncryptedPdfError
   STDERR.puts "Erreur : document chiffré — fournissez -p / --password."
   exit 3
 rescue ex

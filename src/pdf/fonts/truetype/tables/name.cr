@@ -98,7 +98,7 @@ module PDF
           def get(name_id : UInt16) : String?
             # Priority: Windows Unicode English > Mac Roman English > Any
             preferred_record = find_preferred_record(name_id)
-            return nil unless preferred_record
+            return unless preferred_record
 
             extract_string(preferred_record)
           end
@@ -122,7 +122,7 @@ module PDF
           private def find_preferred_record(name_id : UInt16) : NameRecord?
             # Collect matching records
             matches = @records.select { |r| r.name_id == name_id }
-            return nil if matches.empty?
+            return if matches.empty?
 
             # Windows Unicode English (platform 3, encoding 1, language 0x409)
             if r = matches.find { |m| m.platform_id == 3 && m.encoding_id == 1 && m.language_id == 0x0409 }
@@ -150,7 +150,7 @@ module PDF
 
           # Extract a string from a name record
           private def extract_string(record : NameRecord) : String?
-            return nil if record.offset + record.length > @string_data.size
+            return if record.offset + record.length > @string_data.size
 
             data = @string_data[record.offset, record.length]
 

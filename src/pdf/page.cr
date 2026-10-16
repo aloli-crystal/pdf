@@ -462,7 +462,7 @@ module PDF
       saved_size = @current_font_size
       saved_ttf = @current_truetype_font
 
-      self.font(icon_font, size: size)
+      font(icon_font, size: size)
       text(char, at: at)
 
       # Restore previous font

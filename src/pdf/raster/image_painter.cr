@@ -31,19 +31,19 @@ module PDF
       # ou nil si absent.
       private def self.alpha_sampler(reader : PDF::Reader, stream : PDF::Objects::Stream) : Sampler?
         sm = stream["SMask"]?
-        return nil unless sm
+        return unless sm
         mask = reader.resolve(sm).as?(PDF::Objects::Stream)
-        return nil unless mask
+        return unless mask
         w = int(reader, mask["Width"]?)
         h = int(reader, mask["Height"]?)
-        return nil unless w && h && w > 0 && h > 0
+        return unless w && h && w > 0 && h > 0
         filter = filter_name(reader, mask["Filter"]?)
         if filter == "DCTDecode"
           return jpeg_sampler(mask, w, h)
         end
-        return nil unless mask.decoded
+        return unless mask.decoded
         bpc = int(reader, mask["BitsPerComponent"]?) || 8
-        return nil unless bpc == 8
+        return unless bpc == 8
         data = mask.data
         Sampler.new(w, h) do |col, row|
           g = byte_at(data, row * w + col) / 255.0
@@ -112,9 +112,9 @@ module PDF
         end
 
         # Échantillons décodés (FlateDecode & co.).
-        return nil unless stream.decoded
+        return unless stream.decoded
         bpc = int(reader, stream["BitsPerComponent"]?) || 8
-        return nil unless bpc == 8 || bpc == 1
+        return unless bpc == 8 || bpc == 1
         cs = stream["ColorSpace"]?
         raw_sampler(reader, stream, width, height, bpc, cs)
       end
@@ -143,11 +143,11 @@ module PDF
       private def self.raw_sampler(reader : PDF::Reader, stream : PDF::Objects::Stream, width : Int32, height : Int32, bpc : Int32, cs : PDF::Objects::Base?) : Sampler?
         data = stream.data
         space, comps, palette = resolve_color_space(reader, cs)
-        return nil unless space
+        return unless space
 
         if space == "indexed"
           pal = palette
-          return nil unless pal
+          return unless pal
           stride = (width * bpc + 7) // 8
           return Sampler.new(width, height) do |col, row|
             index = read_sample(data, row * stride, col, bpc)
@@ -161,7 +161,7 @@ module PDF
         end
 
         # 8 bits par composante uniquement pour les espaces directs.
-        return nil unless bpc == 8
+        return unless bpc == 8
         stride = width * comps
         Sampler.new(width, height) do |col, row|
           off = row * stride + col * comps
@@ -215,14 +215,14 @@ module PDF
       # Table de correspondance d'un espace /Indexed, convertie en RGB
       # (3 octets par entrée). Suppose une base RGB/Gray/CMYK.
       private def self.indexed_palette(reader : PDF::Reader, cs : PDF::Objects::Array) : Array(UInt8)?
-        return nil if cs.size < 4
+        return if cs.size < 4
         base_cs = cs.unsafe_fetch(1)
         _, base_comps, _ = resolve_color_space(reader, base_cs)
         lookup = reader.resolve(cs.unsafe_fetch(3))
         raw = case lookup
               when PDF::Objects::Str    then lookup.value.to_slice
               when PDF::Objects::Stream then lookup.data
-              else                           return nil
+              else                           return
               end
         entries = raw.size // base_comps
         palette = Array(UInt8).new(entries * 3, 0_u8)
@@ -261,7 +261,7 @@ module PDF
       end
 
       private def self.int(reader : PDF::Reader, obj : PDF::Objects::Base?) : Int32?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Number).try(&.to_i64.to_i)
       end
 
@@ -271,12 +271,11 @@ module PDF
       end
 
       private def self.filter_name(reader : PDF::Reader, obj : PDF::Objects::Base?) : String?
-        return nil unless obj
+        return unless obj
         resolved = reader.resolve(obj)
         case resolved
         when PDF::Objects::Name  then resolved.value
         when PDF::Objects::Array then resolved.size > 0 ? reader.resolve(resolved.unsafe_fetch(resolved.size - 1)).as?(PDF::Objects::Name).try(&.value) : nil
-        else                          nil
         end
       end
     end

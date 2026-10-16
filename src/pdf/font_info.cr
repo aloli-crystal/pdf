@@ -158,7 +158,7 @@ module PDF
     # ou le nom de CMap pour une fonte composite (/Encoding nom).
     private def self.encoding_label(reader : PDF::Reader, font : PDF::Objects::Dictionary) : String?
       enc = font["Encoding"]?
-      return nil unless enc
+      return unless enc
       resolved = reader.resolve(enc)
       case resolved
       when PDF::Objects::Name
@@ -170,8 +170,6 @@ module PDF
         else
           "Custom"
         end
-      else
-        nil
       end
     end
 
@@ -183,12 +181,12 @@ module PDF
     end
 
     private def self.resolve_dict(reader : PDF::Reader, obj : PDF::Objects::Base?) : PDF::Objects::Dictionary?
-      return nil unless obj
+      return unless obj
       reader.resolve(obj).as?(PDF::Objects::Dictionary)
     end
 
     private def self.name_value(reader : PDF::Reader, obj : PDF::Objects::Base?) : String?
-      return nil unless obj
+      return unless obj
       reader.resolve(obj).as?(PDF::Objects::Name).try(&.value)
     end
   end

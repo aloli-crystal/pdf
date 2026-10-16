@@ -19,7 +19,7 @@ describe PDF::Fonts::TrueType::Tables::Kern do
       parser = PDF::Fonts::TrueType::Parser.parse(KERN_SPEC_FONT_PATH)
       # DejaVuSans may or may not have a kern table;
       # this test just verifies the method works without crashing
-      parser.kern.is_a?(PDF::Fonts::TrueType::Tables::Kern | Nil).should be_true
+      parser.kern.is_a?(PDF::Fonts::TrueType::Tables::Kern?).should be_true
     end
   end
 

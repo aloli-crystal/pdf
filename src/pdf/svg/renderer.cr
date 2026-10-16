@@ -315,7 +315,7 @@ module PDF
 
       # `<marker>` désigné par `url(#id)`, ou nil.
       private def marker_ref(value : String?) : XML::Node?
-        return nil unless value
+        return unless value
         id = value[/\Aurl\(\s*['"]?#([^'")\s]+)['"]?\s*\)\z/, 1]?
         id ? parser.markers[id]? : nil
       end
@@ -566,7 +566,7 @@ module PDF
 
       # Parses an opacity value : a number (`0.4`) or a percentage (`40%`).
       private def parse_opacity(value : String?) : Float64?
-        return nil unless value
+        return unless value
         v = value.strip
         number = v.ends_with?('%') ? v.rchop.to_f?.try(&./(100.0)) : v.to_f?
         number.try(&.clamp(0.0, 1.0))

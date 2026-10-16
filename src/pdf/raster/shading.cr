@@ -34,10 +34,10 @@ module PDF
       end
 
       private def self.parse_one(reader : PDF::Reader, obj : PDF::Objects::Base?) : PdfFunction?
-        return nil unless obj
+        return unless obj
         resolved = reader.resolve(obj)
         dict = resolved.as?(PDF::Objects::Dictionary) || resolved.as?(PDF::Objects::Stream).try(&.dictionary)
-        return nil unless dict
+        return unless dict
         type = int(reader, dict["FunctionType"]?) || 2
         fn = PdfFunction.new(type)
         fn.load(reader, dict, resolved.as?(PDF::Objects::Stream))
@@ -143,14 +143,14 @@ module PDF
       end
 
       protected def self.int(reader, obj) : Int32?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Number).try(&.to_i64.to_i)
       end
 
       protected def self.floats(reader, obj) : Array(Float64)?
-        return nil unless obj
+        return unless obj
         arr = reader.resolve(obj).as?(PDF::Objects::Array)
-        return nil unless arr
+        return unless arr
         arr.compact_map { |e| reader.resolve(e).as?(PDF::Objects::Number).try(&.to_f64) }
       end
 
@@ -208,10 +208,10 @@ module PDF
         return 0.0 if len2 == 0
         t = ((ux - ax) * dx + (uy - ay) * dy) / len2
         if t < 0
-          return nil unless ext0
+          return unless ext0
           t = 0.0
         elsif t > 1
-          return nil unless ext1
+          return unless ext1
           t = 1.0
         end
         t
@@ -241,13 +241,13 @@ module PDF
             end
           end
         end
-        return nil unless best
+        return unless best
         s = best.not_nil!
         if s < 0
-          return nil unless ext0
+          return unless ext0
           s = 0.0
         elsif s > 1
-          return nil unless ext1
+          return unless ext1
           s = 1.0
         end
         s
@@ -291,14 +291,14 @@ module PDF
       end
 
       private def self.int(reader, obj) : Int32?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Number).try(&.to_i64.to_i)
       end
 
       private def self.floats(reader, obj) : Array(Float64)?
-        return nil unless obj
+        return unless obj
         arr = reader.resolve(obj).as?(PDF::Objects::Array)
-        return nil unless arr
+        return unless arr
         arr.compact_map { |e| reader.resolve(e).as?(PDF::Objects::Number).try(&.to_f64) }
       end
 

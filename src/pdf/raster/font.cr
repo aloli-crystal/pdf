@@ -46,12 +46,12 @@ module PDF
         if subtype == "Type0"
           two_byte = true
           descendant = first_descendant(reader, font_dict)
-          return nil unless descendant
+          return unless descendant
           cid_to_gid = load_cid_to_gid(reader, descendant)
         end
 
         descriptor = resolve_dict(reader, (descendant || font_dict)["FontDescriptor"]?)
-        return nil unless descriptor
+        return unless descriptor
 
         # TrueType embarqué (/FontFile2).
         if ff2 = stream_of(reader, descriptor["FontFile2"]?)
@@ -189,7 +189,7 @@ module PDF
       end
 
       private def cmap : PDF::Fonts::TrueType::Tables::Cmap?
-        return nil unless tt = @truetype
+        return unless tt = @truetype
         unless @cmap_loaded
           @cmap_loaded = true
           @cmap = tt.has_table?("cmap") ? tt.cmap : nil
@@ -199,9 +199,9 @@ module PDF
 
       private def self.load_cid_to_gid(reader : PDF::Reader, cidfont : PDF::Objects::Dictionary) : Array(UInt16)?
         obj = cidfont["CIDToGIDMap"]?
-        return nil unless obj
+        return unless obj
         resolved = reader.resolve(obj)
-        return nil unless stream = resolved.as?(PDF::Objects::Stream)
+        return unless stream = resolved.as?(PDF::Objects::Stream)
         data = stream.data
         map = Array(UInt16).new(data.size // 2)
         i = 0
@@ -222,17 +222,17 @@ module PDF
       end
 
       private def self.stream_of(reader : PDF::Reader, obj : PDF::Objects::Base?) : PDF::Objects::Stream?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Stream)
       end
 
       private def self.resolve_dict(reader : PDF::Reader, obj : PDF::Objects::Base?) : PDF::Objects::Dictionary?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Dictionary)
       end
 
       private def self.name_of(reader : PDF::Reader, obj : PDF::Objects::Base?) : String?
-        return nil unless obj
+        return unless obj
         reader.resolve(obj).as?(PDF::Objects::Name).try(&.value)
       end
     end

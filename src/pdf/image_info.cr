@@ -182,7 +182,7 @@ module PDF
     private def self.build(reader : PDF::Reader, stream : PDF::Objects::Stream, name : String, page : Int32, obj_num : Int32) : ImageInfo?
       width = int_value(reader, stream["Width"]?)
       height = int_value(reader, stream["Height"]?)
-      return nil unless width && height
+      return unless width && height
 
       image_mask = stream["ImageMask"]?.try { |m| reader.resolve(m).as?(PDF::Objects::Boolean).try(&.value) } || false
       bpc = int_value(reader, stream["BitsPerComponent"]?) || (image_mask ? 1 : 8)
@@ -258,7 +258,7 @@ module PDF
     # Réduit la liste de filtres au filtre image significatif (le
     # dernier), traduit en libellé court.
     private def self.classify_filter(reader : PDF::Reader, filter : PDF::Objects::Base?) : String?
-      return nil unless filter
+      return unless filter
       resolved = reader.resolve(filter)
       name = case resolved
              when PDF::Objects::Name
@@ -268,8 +268,6 @@ module PDF
                last = nil
                resolved.each { |f| last = reader.resolve(f).as?(PDF::Objects::Name).try(&.value) || last }
                last
-             else
-               nil
              end
       case name
       when "DCTDecode", "DCT"      then "jpeg"
@@ -301,12 +299,12 @@ module PDF
     end
 
     private def self.int_value(reader : PDF::Reader, obj : PDF::Objects::Base?) : Int32?
-      return nil unless obj
+      return unless obj
       reader.resolve(obj).as?(PDF::Objects::Number).try(&.to_i64.to_i)
     end
 
     private def self.name_value(reader : PDF::Reader, obj : PDF::Objects::Base?) : String?
-      return nil unless obj
+      return unless obj
       reader.resolve(obj).as?(PDF::Objects::Name).try(&.value)
     end
   end

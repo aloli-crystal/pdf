@@ -20,7 +20,7 @@ module PDF
       header : Bool | Int32 = false,
       column_widths : Array(Float64)? = nil,
       table_width : Float64? = nil,
-      cell_style : Hash(Symbol, String | Float64 | Bool | Nil)? = nil,
+      cell_style : Hash(Symbol, String | Float64 | Bool?)? = nil,
       row_colors : Array(String)? = nil,
     ) : Table
       table = Table.new(
