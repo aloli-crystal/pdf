@@ -7,6 +7,49 @@ All notable changes to pdf are documented here. The format
 follows https://keepachangelog.com/1.1.0/[Keep a Changelog] and
 versioning follows https://semver.org/[SemVer].
 
+== v1.22.3 — 2026-11-10
+
+=== Fixed
+
+* **`PDF::Reader` récupère les PDFs à xref décalée.** Certains
+  producteurs écrivent une table xref dont la première
+  sous-section déclare `first_obj=1` alors que la 1re entrée est
+  le marqueur « 0 free » (obj 0 libre, obligatoire ISO 32000-1
+  § 7.5.4). Conséquence : tous les offsets lus sont décalés d'un
+  rang, le Reader résolvait `/Root 5 0 R` sur un offset qui
+  contenait en réalité l'objet 4 (/Pages) → `KeyError: "Pages"`
+  silencieuse, `page_count=0`, le document invisible pour tout
+  caller — combine-pdf avalait silencieusement le fichier en
+  merge.
++
+Cas vécu : un livret de messe `2026-11-11` dans lequel
+`anamnese--irlandaise--amazing-grace--simple.pdf` manquait
+après `combine-pdf build` (17 pages au lieu de 18, aucun
+warning). qpdf diagnostique correctement
+« Attempting to reconstruct cross-reference table ».
++
+Fix : `parse!` effectue désormais un sanity check — pour chaque
+entrée xref, l'offset doit pointer vers `<obj_num> <gen> obj`.
+Un seul désaccord déclenche une reconstruction par scan forward
+(`scan_xref_by_forward_scan`) : parcours octet par octet du
+fichier à la recherche des tokens `<N> <G> obj` en début de
+ligne, table reconstruite à partir de ces vraies positions.
+Comportement calqué sur Preview.app, Acrobat et qpdf.
++
+Les PDFs à xref correcte ne payent **rien** : le check est O(k)
+(k = nombre d'entrées, typiquement < 100), aucun scan tant qu'il
+passe. Les PDFs à xref cassée payent un O(n) sur la taille du
+fichier mais marchent, là où avant ils étaient silencieusement
+ignorés.
+
+=== Specs
+
+* Nouveau `spec/pdf/reader_xref_recovery_spec.cr` : forge un PDF
+  minimal de ~500 octets avec exactement le même défaut (xref
+  `first_obj=1` + séparateur CR seul) et vérifie que
+  `page_count` et `resolve(/Root)` fonctionnent. Non-régression
+  garantie pour tout PDF du même type à l'avenir.
+
 == v1.22.2 — 2026-10-16
 
 === Changed

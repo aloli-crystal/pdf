@@ -113,6 +113,125 @@ module PDF
           @compressed_objects[obj_num] = ref
         end
       end
+
+      # Sanity check + récupération. Certains producteurs écrivent une
+      # xref avec un `first_obj` incorrect ou des offsets décalés — la
+      # table lit sans erreur mais pointe à côté. Preview.app, Acrobat
+      # et qpdf savent reconstruire en scannant les tokens `N G obj`.
+      # On fait pareil : si la xref ne colle pas, on la remplace par la
+      # version reconstruite.
+      unless xref_coherent?
+        recovered = scan_xref_by_forward_scan
+        if !recovered.empty?
+          @xref = recovered
+        end
+      end
+    end
+
+    # Sanity check : au moins 1 offset doit pointer vers `N G obj` où
+    # `N` égale le numéro de l'entrée xref. Un seul désaccord suffit à
+    # déclarer la xref corrompue (cas vécu : tous décalés d'un rang).
+    # Les objets en object streams (type 2) sont absents de `@xref` et
+    # donc hors du check, ce qui est correct.
+    private def xref_coherent? : Bool
+      return true if @xref.empty?
+      @xref.each do |obj_num, offset|
+        return false unless object_marker_at?(offset, obj_num)
+      end
+      true
+    end
+
+    # Teste si à `offset` on trouve bien le motif `<obj_num> <gen> obj`
+    # (gen est accepté quelconque, seul le obj_num est vérifié).
+    # Robuste au séparateur de ligne (CR, LF, CRLF) et aux tabs.
+    private def object_marker_at?(offset : Int64, expected_obj_num : Int32) : Bool
+      return false if offset < 0 || offset >= @data.size
+      saved = @pos
+      begin
+        @pos = offset
+        skip_whitespace
+        return false if @pos >= @data.size
+        start = @pos
+        # Lit obj_num
+        return false unless @data[@pos] >= '0'.ord.to_u8 && @data[@pos] <= '9'.ord.to_u8
+        obj_num = read_int
+        return false unless obj_num == expected_obj_num
+        skip_whitespace
+        return false if @pos >= @data.size
+        return false unless @data[@pos] >= '0'.ord.to_u8 && @data[@pos] <= '9'.ord.to_u8
+        _gen = read_int
+        skip_whitespace
+        return false if @pos + 3 > @data.size
+        return false unless @data[@pos] == 'o'.ord.to_u8 &&
+                            @data[@pos + 1] == 'b'.ord.to_u8 &&
+                            @data[@pos + 2] == 'j'.ord.to_u8
+        # Vérifie que le caractère après "obj" n'est pas alphanumérique
+        next_char = @pos + 3 < @data.size ? @data[@pos + 3] : 0x20_u8
+        !(next_char >= 'a'.ord.to_u8 && next_char <= 'z'.ord.to_u8) &&
+          !(next_char >= 'A'.ord.to_u8 && next_char <= 'Z'.ord.to_u8) &&
+          !(next_char >= '0'.ord.to_u8 && next_char <= '9'.ord.to_u8)
+      rescue
+        false
+      ensure
+        @pos = saved
+      end
+    end
+
+    # Reconstruit la table xref par scan forward du fichier, pattern
+    # observé par les viewers robustes (Preview, Acrobat, qpdf).
+    # Parcourt `@data` à la recherche du motif
+    # `<EOL><obj_num> <gen> obj` au début d'une ligne (après CR, LF ou
+    # CRLF, ou au tout début du fichier). Les occurrences à l'intérieur
+    # d'un stream compressé (FlateDecode) sont statistiquement nulles.
+    # Les objets en object streams (PDF 1.5+, entrées type 2) ne sont
+    # PAS récupérés ici — ils restent dans @compressed_objects.
+    private def scan_xref_by_forward_scan : Hash(Int32, Int64)
+      result = {} of Int32 => Int64
+      n = @data.size
+      i = 0
+      while i < n
+        # `i` est au début d'une ligne : i=0 ou le précédent est \r/\n
+        line_start = i == 0 || @data[i - 1] == 0x0A_u8 || @data[i - 1] == 0x0D_u8
+        if line_start
+          saved = @pos
+          begin
+            @pos = i.to_i64
+            # obj_num doit être entre 1 et un million
+            if @pos < n && @data[@pos] >= '0'.ord.to_u8 && @data[@pos] <= '9'.ord.to_u8
+              obj_start = @pos
+              obj_num = read_int
+              if obj_num >= 1 && obj_num < 1_000_000 && @pos < n &&
+                 (@data[@pos] == 0x20_u8 || @data[@pos] == 0x09_u8)
+                skip_whitespace
+                if @pos < n && @data[@pos] >= '0'.ord.to_u8 && @data[@pos] <= '9'.ord.to_u8
+                  _gen = read_int
+                  skip_whitespace
+                  if @pos + 3 <= n &&
+                     @data[@pos] == 'o'.ord.to_u8 &&
+                     @data[@pos + 1] == 'b'.ord.to_u8 &&
+                     @data[@pos + 2] == 'j'.ord.to_u8
+                    next_char = @pos + 3 < n ? @data[@pos + 3] : 0x20_u8
+                    is_word_boundary = !(next_char >= 'a'.ord.to_u8 && next_char <= 'z'.ord.to_u8) &&
+                                       !(next_char >= 'A'.ord.to_u8 && next_char <= 'Z'.ord.to_u8) &&
+                                       !(next_char >= '0'.ord.to_u8 && next_char <= '9'.ord.to_u8)
+                    if is_word_boundary
+                      # Garde la dernière occurrence (révisions
+                      # incrémentales possibles).
+                      result[obj_num] = obj_start
+                    end
+                  end
+                end
+              end
+            end
+          rescue
+            # Chiffre trop grand, EOF, etc. — skip et continue.
+          ensure
+            @pos = saved
+          end
+        end
+        i += 1
+      end
+      result
     end
 
     # Décide si l'offset pointe sur un xref classique (token "xref")
